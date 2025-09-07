@@ -5,7 +5,7 @@
 # - Saved reports: /r/{id}, PDF: /report/{id}.pdf
 # - Health/config, rate limiting, parser-friendliness audit
 # - Embeddings preload (when EMB_ON=1)
-#sherif
+#yassin w sherif
 import os
 import json
 import uuid
@@ -19,7 +19,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Res
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse, RedirectResponse
 from pydantic import BaseModel
-
+from contextlib import asynccontextmanager
 from ats_core import compute_score  # and _emb_model (lazy-imported in startup)
 
 # ---------- Optional deps ----------
@@ -98,8 +98,13 @@ def rate_limit(request: Request) -> None:
 
 def save_report(report: dict) -> str:
     rid = str(uuid.uuid4())
-    (REPORT_DIR / f"{rid}.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), "utf-8")
+    report["id"] = rid
+    report["share_url"] = f"/r/{rid}"
+    (REPORT_DIR / f"{rid}.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2), "utf-8"
+    )
     return rid
+
 
 def read_docx_bytes(b: bytes) -> str:
     if docx is None:
@@ -347,14 +352,19 @@ def is_authed(request: Request) -> bool:
     return bool(tok) and _verify_token(tok)
 
 # ---------- Startup ----------
-@app.on_event("startup")
-async def _preload_embeddings():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # preload embeddings if enabled
     try:
         if os.environ.get("EMB_ON", "0") == "1":
-            from ats_core import _emb_model  # instantiate once
+            from ats_core import _emb_model
             _ = _emb_model
     except Exception as e:
         print("Embeddings preload skipped/failed:", e)
+    yield  # (place shutdown/cleanup after yield if you add any)
+
+# pass lifespan when creating the app
+app = FastAPI(title=APP_TITLE, version=VERSION, lifespan=lifespan)
 
 # ---------- Routes ----------
 @app.get("/login", include_in_schema=False)
@@ -409,7 +419,12 @@ def get_report(rid: str):
     p = REPORT_DIR / f"{rid}.json"
     if not p.exists():
         raise HTTPException(404, "Report not found")
-    return JSONResponse(json.loads(p.read_text("utf-8")))
+    data = json.loads(p.read_text("utf-8"))
+    # Backfill for older saved reports
+    data.setdefault("id", rid)
+    data.setdefault("share_url", f"/r/{rid}")
+    return JSONResponse(data)
+
 
 @app.get("/report/{rid}.pdf")
 def report_pdf(rid: str):
