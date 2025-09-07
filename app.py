@@ -49,7 +49,19 @@ except ImportError:
 APP_TITLE = "ATS-like Resume Checker API"
 VERSION = "0.3.1"
 
-app = FastAPI(title=APP_TITLE, version=VERSION)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # preload embeddings if enabled
+    try:
+        if os.environ.get("EMB_ON", "0") == "1":
+            from ats_core import _emb_model
+            _ = _emb_model
+    except Exception as e:
+        print("Embeddings preload skipped/failed:", e)
+    yield  # (place shutdown/cleanup after yield if you add any)
+
+# pass lifespan when creating the app
+app = FastAPI(title=APP_TITLE, version=VERSION, lifespan=lifespan)
 
 # CORS (open in dev; tighten for prod)
 app.add_middleware(
@@ -352,19 +364,7 @@ def is_authed(request: Request) -> bool:
     return bool(tok) and _verify_token(tok)
 
 # ---------- Startup ----------
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # preload embeddings if enabled
-    try:
-        if os.environ.get("EMB_ON", "0") == "1":
-            from ats_core import _emb_model
-            _ = _emb_model
-    except Exception as e:
-        print("Embeddings preload skipped/failed:", e)
-    yield  # (place shutdown/cleanup after yield if you add any)
 
-# pass lifespan when creating the app
-app = FastAPI(title=APP_TITLE, version=VERSION, lifespan=lifespan)
 
 # ---------- Routes ----------
 @app.get("/login", include_in_schema=False)
