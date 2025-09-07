@@ -1,0 +1,66 @@
+{
+  "score": 50.2,
+  "components": {
+    "coverage": 55.0,
+    "frequency_bonus": 23.3,
+    "section_hygiene": 62.5,
+    "length_penalty_applied": false
+  },
+  "matched_keywords": [
+    "computer vision",
+    "docker",
+    "git",
+    "linux",
+    "node",
+    "opencv",
+    "python",
+    "pytorch",
+    "react",
+    "sql",
+    "tensorflow"
+  ],
+  "missing_keywords": [
+    "aws",
+    "azure",
+    "data analysis",
+    "deep learning",
+    "machine learning",
+    "mysql",
+    "numpy",
+    "pandas",
+    "postgresql"
+  ],
+  "avg_sentence_length": 10.7,
+  "section_presence": {
+    "experience": true,
+    "education": true,
+    "projects": true,
+    "skills": true,
+    "certifications": false,
+    "publications": false,
+    "summary": true,
+    "profile": false
+  },
+  "top_resume_terms": [
+    "+",
+    "control",
+    "-",
+    "username",
+    "automotive",
+    "projects",
+    "tracker",
+    "battery",
+    "soc",
+    "estimation",
+    "ukf",
+    "ekf",
+    "react",
+    "node",
+    "giu",
+    "intern",
+    "engineering",
+    "mohamed",
+    "sherif",
+    "cairo"
+  ]
+}

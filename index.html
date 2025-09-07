@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ATS Resume Checker</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Mammoth (optional .docx preview) -->
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+
+  <style>
+    /* Chips + glass */
+    .chip{padding:.25rem .5rem;border-radius:9999px;border:1px solid #334155;background:#0b1220}
+    .chip-bad{border-color:rgba(244,63,94,.45);background:rgba(127,29,29,.28)}
+    .glass{background:rgba(2,6,23,.6);backdrop-filter:blur(10px)}
+    /* Animations (respect reduced motion) */
+    @media (prefers-reduced-motion:no-preference){
+      .fade-in{opacity:0;transform:translateY(6px);transition:opacity .5s ease,transform .5s ease}
+      .fade-in.show{opacity:1;transform:none}
+      .pop{opacity:0;transform:scale(.96);transition:opacity .35s ease,transform .35s ease}
+      .pop.show{opacity:1;transform:none}
+      .shimmer{
+        position:relative;overflow:hidden;
+      }
+      .shimmer::after{
+        content:"";position:absolute;inset:0;
+        background:linear-gradient(110deg,transparent 0%,transparent 40%,rgba(255,255,255,.06) 50%,transparent 60%,transparent 100%);
+        transform:translateX(-120%);animation:shimmer 2.2s ease-in-out infinite;
+      }
+      @keyframes shimmer{to{transform:translateX(120%)}}
+      .glow{box-shadow:0 0 0 0 rgba(34,197,94,.35);animation:glow 1.6s ease-out 1}
+      @keyframes glow{
+        0%{box-shadow:0 0 0 0 rgba(34,197,94,.35)}
+        70%{box-shadow:0 0 0 10px rgba(34,197,94,0)}
+        100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 selection:bg-cyan-600/30">
+  <!-- Top bar -->
+  <header class="sticky top-0 z-10 bg-gradient-to-r from-cyan-600/90 to-emerald-600/90 border-b border-white/10">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-8 w-8 rounded-xl bg-white/20 grid place-items-center font-bold">A</div>
+        <div>
+          <h1 class="text-lg font-semibold tracking-tight">ATS Resume Checker</h1>
+          <p class="text-white/70 text-xs">Score • Gaps • Tips • PDF</p>
+        </div>
+      </div>
+      <a href="/ui" class="text-white/80 text-sm hover:text-white">Reset</a>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- Inputs -->
+    <section class="glass rounded-2xl border border-slate-800 p-5 fade-in show">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="pop show">
+          <label class="text-sm text-slate-300">Resume (.txt/.docx/.pdf)</label>
+          <input id="resumeFile" type="file" accept=".txt,.docx,.pdf"
+                 class="mt-2 block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:bg-slate-800 file:px-4 file:py-2 file:text-slate-100" />
+          <textarea id="resume" class="mt-2 w-full h-44 rounded-xl border border-slate-800 bg-slate-900/70 p-3"
+            placeholder="Paste resume text here (optional if you upload a file)"></textarea>
+        </div>
+        <div class="pop show">
+          <label class="text-sm text-slate-300">Job Description (.txt/.docx/.pdf)</label>
+          <input id="jdFile" type="file" accept=".txt,.docx,.pdf"
+                 class="mt-2 block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:bg-slate-800 file:px-4 file:py-2 file:text-slate-100" />
+          <textarea id="jd" class="mt-2 w-full h-44 rounded-xl border border-slate-800 bg-slate-900/70 p-3"
+            placeholder="Paste job description text here (or upload a file)"></textarea>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3 mt-4">
+        <button id="checkBtn"
+          class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 active:scale-95 transition">
+          <span class="inline-flex items-center gap-2">
+            <svg class="h-4 w-4 opacity-80" viewBox="0 0 24 24" fill="currentColor"><path d="M5 12l5 5L20 7"/></svg>
+            Check ATS
+          </span>
+        </button>
+
+        <!-- Removed Copy Share Link button -->
+
+        <button id="dlPdf" class="px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 disabled:opacity-50"
+                disabled>
+          Download PDF
+        </button>
+
+        <span id="status" class="text-sm text-slate-400"></span>
+        <span id="spinner" class="hidden ml-1 inline-flex items-center text-slate-300 text-sm">
+          <svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none">
+            <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+          scoring…
+        </span>
+      </div>
+    </section>
+
+    <!-- Parser tips -->
+    <section id="warnCard" class="hidden rounded-2xl border border-amber-700/40 bg-amber-900/20 p-4 fade-in">
+      <h3 class="font-medium text-amber-300 mb-2">Parser-friendliness tips</h3>
+      <ul id="warnList" class="list-disc list-inside text-sm text-amber-200"></ul>
+    </section>
+
+    <!-- Results -->
+    <section id="resultCard" class="hidden glass rounded-2xl border border-slate-800 p-5 space-y-5">
+      <!-- Score -->
+      <div class="flex items-center gap-4">
+        <div class="text-center">
+          <div id="scoreNum" class="text-5xl font-semibold">0.0</div>
+          <div class="text-slate-400 text-xs">/ 100</div>
+        </div>
+        <div class="flex-1 shimmer rounded-full">
+          <div class="w-full h-4 bg-slate-900/60 rounded-full overflow-hidden border border-slate-800"
+               title="Score factors: Required coverage, Overall coverage, Frequency, Sections, Bullet/Action nudges">
+            <div id="scoreBar"
+                 class="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-[width] duration-900 ease-out"
+                 style="width:0%"></div>
+          </div>
+        </div>
+        <div class="text-sm text-slate-400">Coverage • Frequency • Sections</div>
+      </div>
+
+      <!-- Keywords -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="rounded-xl border border-slate-800 p-4 fade-in">
+          <h3 class="font-medium mb-2">Matched Keywords</h3>
+          <div id="matched" class="flex flex-wrap gap-2 text-sm"></div>
+        </div>
+        <div class="rounded-xl border border-slate-800 p-4 fade-in">
+          <h3 class="font-medium mb-2">Missing Keywords</h3>
+          <div id="missing" class="flex flex-wrap gap-2 text-sm"></div>
+        </div>
+      </div>
+
+      <!-- Components & Sections -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="rounded-xl border border-slate-800 p-4 fade-in">
+          <h3 class="font-medium mb-2">Components</h3>
+          <div id="components" class="grid grid-cols-2 gap-x-3 text-sm"></div>
+        </div>
+        <div class="rounded-xl border border-slate-800 p-4 fade-in">
+          <h3 class="font-medium mb-2">Section Presence</h3>
+          <div id="sections" class="grid grid-cols-2 gap-x-3 text-sm"></div>
+        </div>
+      </div>
+
+      <!-- Suggestions -->
+      <div class="rounded-xl border border-slate-800 p-4 fade-in">
+        <h3 class="font-medium mb-2">Suggested Bullets</h3>
+        <ul id="suggested" class="list-disc list-inside text-sm text-slate-200"></ul>
+      </div>
+
+      <!-- Terms -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="rounded-xl border border-slate-800 p-4 fade-in">
+          <h3 class="font-medium mb-2">Top Resume Terms</h3>
+          <div id="topTerms" class="flex flex-wrap gap-2 text-sm"></div>
+        </div>
+        <div class="rounded-xl border border-slate-800 p-4 fade-in">
+          <h3 class="font-medium mb-2">AI Matched Terms</h3>
+          <div id="aiTerms" class="text-sm text-slate-300">None</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id)=>document.getElementById(id);
+
+    // Utilities
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function animateIn(selector){
+      if(reduceMotion) return;
+      document.querySelectorAll(selector).forEach((el, i)=>{
+        el.classList.add('fade-in');
+        setTimeout(()=> el.classList.add('show'), 40 + i*70);
+      });
+    }
+    function chip(text, bad=false){
+      const span = document.createElement("span");
+      span.className = "chip " + (bad ? "chip-bad" : "");
+      if(!reduceMotion){
+        span.classList.add('pop');
+        setTimeout(()=> span.classList.add('show'), 10);
+      }
+      span.textContent = text;
+      return span;
+    }
+    function chips(container, arr, bad=false){
+      container.innerHTML = "";
+      if(!arr || !arr.length){ container.textContent = "None"; return; }
+      arr.forEach((x, i)=>{
+        const c = chip(x,bad);
+        container.appendChild(c);
+        if(!reduceMotion) setTimeout(()=> c.classList.add('show'), 30 + i*25);
+      });
+    }
+    function kv(container, obj){
+      container.innerHTML = "";
+      Object.entries(obj||{}).forEach(([k,v], i)=>{
+        const a = document.createElement("div"); a.textContent = k.replaceAll("_"," ");
+        const b = document.createElement("div");
+        b.textContent = (typeof v==="boolean") ? (v ? "✔" : "✖") : v;
+        b.className = "text-right";
+        container.appendChild(a); container.appendChild(b);
+      });
+    }
+    function listUL(container, arr){
+      container.innerHTML = "";
+      if(!arr || !arr.length){ container.innerHTML = "<li>None</li>"; return; }
+      arr.forEach((x,i)=>{ const li=document.createElement("li"); li.textContent=x; container.appendChild(li);});
+    }
+    function renderWarnings(arr){
+      const card = $("warnCard");
+      const ul = $("warnList");
+      if(!arr || !arr.length){ card.classList.add("hidden"); return; }
+      ul.innerHTML = "";
+      arr.forEach(x=>{ const li=document.createElement("li"); li.textContent=x; ul.appendChild(li); });
+      card.classList.remove("hidden");
+      animateIn('#warnCard');
+    }
+
+    // Number count-up
+    function countTo(el, to, dur=700){
+      if(reduceMotion){ el.textContent = to.toFixed(1); return; }
+      const start = performance.now(), from = 0;
+      function step(t){
+        const p = Math.min(1, (t - start)/dur);
+        const val = from + (to - from)*p;
+        el.textContent = val.toFixed(1);
+        if(p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    let lastReport = null;
+
+    function enablePdf(json){
+      const pdfBtn = $("dlPdf");
+      if(!pdfBtn) return;
+      if(json && json.id){
+        pdfBtn.disabled = false;
+        pdfBtn.onclick = ()=> {
+          const url = `/report/${json.id}.pdf`;
+          window.open(url, "_blank");
+        };
+      } else {
+        pdfBtn.disabled = true;
+      }
+    }
+
+    function render(json){
+      lastReport = json;
+
+      const card = $("resultCard");
+      card.classList.remove("hidden");
+      if(!reduceMotion) card.classList.add('glow');
+
+      const score = Number(json.score||0);
+      countTo($("scoreNum"), score);
+      $("scoreBar").style.width = Math.max(0, Math.min(100, score)) + "%";
+
+      chips($("matched"), json.matched_keywords);
+
+      // Required-first ordering for missing
+      const reqMissing = json.required_missing || [];
+      const preferredMissing = (json.missing_keywords || []).filter(x => !reqMissing.includes(x));
+      const missingOrdered = [...reqMissing, ...preferredMissing];
+      chips($("missing"), missingOrdered, true);
+
+      kv($("components"), json.components);
+      kv($("sections"), json.section_presence);
+      listUL($("suggested"), json.suggested_bullets);
+      chips($("topTerms"), json.top_resume_terms);
+      $("aiTerms").textContent = (json.ai_matched_terms && json.ai_matched_terms.length)
+        ? json.ai_matched_terms.join(", ")
+        : "None";
+
+      renderWarnings(json.format_warnings);
+      enablePdf(json);
+      animateIn('#resultCard .fade-in');
+    }
+
+    // File helpers (preview txt/docx; PDFs go to server)
+    function isPdf(file){ return file && file.name && file.name.toLowerCase().endsWith(".pdf"); }
+    function readText(file){
+      return new Promise((res)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result||"")); r.readAsText(file); });
+    }
+    function readDocx(file){
+      return new Promise((resolve)=>{
+        if(!window.mammoth){ resolve(""); return; }
+        const r=new FileReader();
+        r.onload=async ()=>{
+          try{ const out = await window.mammoth.extractRawText({arrayBuffer:r.result}); resolve(out.value||""); }
+          catch{ resolve(""); }
+        };
+        r.readAsArrayBuffer(file);
+      });
+    }
+
+    $("resumeFile").addEventListener("change", async (e)=>{
+      const f = e.target.files?.[0]; if(!f) return;
+      if(isPdf(f)){ $("resume").value = "[PDF selected — will be parsed on server]"; return; }
+      $("resume").value = f.name.toLowerCase().endsWith(".txt") ? await readText(f) : await readDocx(f);
+    });
+
+    $("jdFile").addEventListener("change", async (e)=>{
+      const f = e.target.files?.[0]; if(!f) return;
+      if(isPdf(f)){ $("jd").value = "[PDF selected — will be parsed on server]"; return; }
+      $("jd").value = f.name.toLowerCase().endsWith(".txt") ? await readText(f) : await readDocx(f);
+    });
+
+    // Submit
+    $("checkBtn").onclick = async ()=>{
+      const resumeFile = $("resumeFile").files[0];
+      const jdFile     = $("jdFile").files[0];
+      const resume_text = $("resume").value.trim();
+      const job_description = $("jd").value.trim();
+
+      if(!resumeFile && !jdFile && !resume_text && !job_description){
+        $("status").textContent = "Add a resume and JD (upload or paste).";
+        setTimeout(()=> $("status").textContent = "", 1600);
+        return;
+      }
+
+      $("status").textContent = "Scoring...";
+      $("spinner").classList.remove("hidden");
+      $("checkBtn").disabled = true;
+
+      try{
+        let res, json;
+        if (resumeFile || jdFile) {
+          const form = new FormData();
+          if (resumeFile) form.append("resume", resumeFile);
+          if (jdFile)     form.append("job_description", jdFile);
+          if (!jdFile && job_description) form.append("jd_text", job_description);
+          res = await fetch("/score-file", { method:"POST", body: form });
+        } else {
+          res = await fetch("/score", {
+            method:"POST", headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ resume_text, job_description })
+          });
+        }
+        json = await res.json();
+        if (!res.ok) throw new Error(json?.detail || ("HTTP "+res.status));
+        render(json);
+        $("status").textContent = "";
+      } catch (e){
+        $("status").textContent = "Error: " + e.message;
+      } finally {
+        $("spinner").classList.add("hidden");
+        $("checkBtn").disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>

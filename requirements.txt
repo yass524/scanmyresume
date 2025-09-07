@@ -1,0 +1,10 @@
+fastapi==0.112.2
+uvicorn==0.30.6
+# Optional if you later add file parsing for PDFs/DOCX:
+pdfminer.six
+python-docx
+spacy
+ scikit-learn
+pdfminer.six
+python-docx
+python-multipart
