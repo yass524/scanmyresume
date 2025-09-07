@@ -5,7 +5,7 @@
 # - Saved reports: /r/{id}, PDF: /report/{id}.pdf
 # - Health/config, rate limiting, parser-friendliness audit
 # - Embeddings preload (when EMB_ON=1)
-#sherif
+
 import os
 import json
 import uuid
