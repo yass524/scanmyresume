@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Sign in • ATS Resume Checker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Animated blobs background */
+    .blob{position:absolute;border-radius:9999px;filter:blur(40px);opacity:.28}
+    .b1{width:380px;height:380px;left:-80px;top:-60px;background:#22d3ee;animation:float1 15s ease-in-out infinite}
+    .b2{width:420px;height:420px;right:-120px;bottom:-80px;background:#10b981;animation:float2 17s ease-in-out infinite}
+    @keyframes float1{0%,100%{transform:translateY(0) translateX(0)}50%{transform:translateY(30px) translateX(40px)}}
+    @keyframes float2{0%,100%{transform:translateY(0) translateX(0)}50%{transform:translateY(-40px) translateX(-30px)}}
+    /* Card micro-interactions */
+    .card{background:rgba(2,6,23,.7);backdrop-filter:blur(12px)}
+    @media (prefers-reduced-motion:no-preference){
+      .pop{opacity:0;transform:scale(.96);transition:opacity .35s ease,transform .35s ease}
+      .pop.show{opacity:1;transform:none}
+      .tilt:hover{transform:translateY(-2px) rotate(-.2deg)}
+      .focusglow:focus{box-shadow:0 0 0 3px rgba(56,189,248,.35)}
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 overflow-hidden">
+  <!-- Animated background -->
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+
+  <main class="relative z-10 min-h-screen grid place-items-center px-4">
+    <section class="card tilt rounded-2xl border border-slate-800 w-full max-w-md p-6 pop show">
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-white/10 mb-3">🅰️</div>
+        <h1 class="text-2xl font-semibold tracking-tight">
+          <span class="bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">
+            ATS Resume Checker
+          </span>
+        </h1>
+        <p class="text-slate-400 text-sm mt-1">Sign in to continue</p>
+      </div>
+
+      <form id="loginForm" class="space-y-3">
+        <div>
+          <label class="text-sm text-slate-300">Email / Username</label>
+          <input id="username" type="text" autocomplete="username" required
+                 class="focusglow mt-1 w-full rounded-xl border border-slate-800 bg-slate-900/70 p-3" placeholder="demo"/>
+        </div>
+        <div>
+          <label class="text-sm text-slate-300">Password</label>
+          <div class="relative">
+            <input id="password" type="password" autocomplete="current-password" required
+                   class="focusglow mt-1 w-full rounded-xl border border-slate-800 bg-slate-900/70 p-3 pr-10" placeholder="letmein"/>
+            <button type="button" id="showPw"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs">
+              show
+            </button>
+          </div>
+        </div>
+
+        <button type="submit"
+          class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 py-2.5 active:scale-95 transition">
+          Sign in
+        </button>
+
+        <p id="msg" class="text-center text-sm text-slate-400 h-5"></p>
+      </form>
+
+      <div class="text-center mt-4">
+        <a href="/ui" class="text-xs text-slate-400 hover:text-slate-200">Skip login (dev)</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id)=>document.getElementById(id);
+    // show/hide password
+    $("showPw").onclick = ()=>{
+      const f = $("password");
+      const on = f.type === "password";
+      f.type = on ? "text" : "password";
+      $("showPw").textContent = on ? "hide" : "show";
+    };
+
+    // submit
+    $("loginForm").onsubmit = async (e)=>{
+      e.preventDefault();
+      $("msg").textContent = "Signing in...";
+      const fd = new FormData();
+      fd.append("username", $("username").value.trim());
+      fd.append("password", $("password").value);
+
+      try{
+        const res = await fetch("/auth/login", { method:"POST", body: fd });
+        const json = await res.json();
+        if(!res.ok) throw new Error(json?.detail || "Login failed");
+        $("msg").textContent = "Success. Redirecting…";
+        setTimeout(()=> window.location.href = json.redirect || "/ui", 300);
+      }catch(err){
+        $("msg").textContent = "Invalid credentials";
+      }
+    };
+
+    // entrance animation
+    if (window.matchMedia && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setTimeout(()=> document.querySelector('.pop')?.classList.add('show'), 30);
+    }
+  </script>
+</body>
+</html>
