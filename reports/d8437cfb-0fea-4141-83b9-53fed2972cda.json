@@ -1,0 +1,85 @@
+{
+  "score": 74.3,
+  "components": {
+    "required_coverage": 100.0,
+    "overall_coverage": 75.0,
+    "frequency_bonus_required": 100.0,
+    "frequency_bonus_overall": 25.0,
+    "section_hygiene": 26.7,
+    "bullets_ratio_%": 0.0,
+    "action_verb_ratio_%": 0.0,
+    "length_penalty_applied": false,
+    "stuffing_penalty_applied": false,
+    "ai_on": false,
+    "ai_semantic_matches": 0
+  },
+  "matched_keywords": [
+    "c",
+    "c++",
+    "python"
+  ],
+  "missing_keywords": [
+    "matlab"
+  ],
+  "required_missing": [],
+  "preferred_missing": [],
+  "gaps_by_category": {
+    "programming_languages": [
+      "matlab"
+    ]
+  },
+  "suggested_bullets": [
+    "Use bullets (•/–) for experience; target ≥25% of lines as bullets.",
+    "Start bullets with action verbs (Built, Implemented, Optimized, Led...)."
+  ],
+  "avg_sentence_length": 23.3,
+  "section_presence": {
+    "experience": true,
+    "education": true,
+    "projects": true,
+    "skills": true,
+    "certifications": false,
+    "publications": false,
+    "summary": false,
+    "profile": false,
+    "work experience": false,
+    "professional experience": false,
+    "skills & tools": false,
+    "tech stack": false,
+    "professional summary": false,
+    "objective": false,
+    "profile summary": false
+  },
+  "top_resume_terms": [
+    "-",
+    "control",
+    "electrical",
+    "automation",
+    "sep",
+    "systems",
+    "industrial",
+    "engineering",
+    "intern",
+    "jul",
+    "motor",
+    "safety",
+    "complete",
+    "simulink",
+    "hands-on",
+    "experience",
+    "classic",
+    "schneider",
+    "design",
+    "june"
+  ],
+  "jd_skill_terms": [
+    "c",
+    "c++",
+    "matlab",
+    "python"
+  ],
+  "format_warnings": [
+    "Use bullets for experience; aim for ≥25% of lines as bullets.",
+    "Start more bullets with action verbs (Built, Implemented, Optimized…)."
+  ]
+}

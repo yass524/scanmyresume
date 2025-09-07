@@ -1,0 +1,60 @@
+{
+  "score": 42.7,
+  "components": {
+    "required_coverage": 100.0,
+    "overall_coverage": 100.0,
+    "frequency_bonus_required": 20.0,
+    "frequency_bonus_overall": 13.3,
+    "section_hygiene": 0.0,
+    "bullets_ratio_%": 0.0,
+    "action_verb_ratio_%": 0.0,
+    "length_penalty_applied": true,
+    "stuffing_penalty_applied": true,
+    "ai_on": false,
+    "ai_semantic_matches": 0
+  },
+  "matched_keywords": [
+    "python"
+  ],
+  "missing_keywords": [],
+  "required_missing": [],
+  "preferred_missing": [],
+  "gaps_by_category": {},
+  "suggested_bullets": [
+    "Use bullets (•/–) in experience; target ≥25% of lines as bullets.",
+    "Start bullets with action verbs (Built, Implemented, Optimized, Led…)."
+  ],
+  "avg_sentence_length": 1.0,
+  "section_presence": {
+    "work experience": false,
+    "professional experience": false,
+    "experience": false,
+    "projects": false,
+    "education": false,
+    "skills & tools": false,
+    "tech stack": false,
+    "skills": false,
+    "certifications": false,
+    "publications": false,
+    "summary": true,
+    "profile": false,
+    "objective": false,
+    "professional summary": false,
+    "profile summary": false
+  },
+  "top_resume_terms": [
+    "python"
+  ],
+  "jd_skill_terms": [
+    "python"
+  ],
+  "ai_matched_terms": [],
+  "ai_similarities": {},
+  "format_warnings": [
+    "Add standard headings: EXPERIENCE, SKILLS, PROJECTS, EDUCATION.",
+    "Use bullets for experience; aim for ≥25% of lines as bullets.",
+    "Start more bullets with action verbs (Built, Implemented, Optimized…)."
+  ],
+  "id": "232d9f64-326e-4a57-8984-49e4d1d1f1d2",
+  "share_url": "/r/232d9f64-326e-4a57-8984-49e4d1d1f1d2"
+}
