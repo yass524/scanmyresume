@@ -1,4 +1,4 @@
-# ats_app.py — FastAPI backend for ATS Checker (all core routes included)
+
 
 import os
 import json
@@ -323,6 +323,11 @@ def build_warnings(report: dict, *, ext: Optional[str], r_bytes: Optional[bytes]
     return w
 
 # ---------- Routes ----------
+@app.get("/", include_in_schema=False)
+def root_redirect():
+    # If you prefer to keep it protected + JSON, delete this and keep your old root() handler.
+    return RedirectResponse(url="/home")
+
 @app.get("/home", include_in_schema=False)
 def home_page(request: Request):
     if not HOME_PATH.exists():
@@ -332,13 +337,13 @@ def home_page(request: Request):
 @app.get("/login", include_in_schema=False)
 def login_page():
     if not LOGIN_PATH.exists():
-        raise HTTPException(404, "login.html not found next to ats_app.py")
+        raise HTTPException(404, "login.html not found next to app.py")
     return FileResponse(LOGIN_PATH)
 
 @app.get("/register", include_in_schema=False)
 def register_page():
     if not REGISTER_PATH.exists():
-        raise HTTPException(404, "register.html not found next to ats_app.py")
+        raise HTTPException(404, "register.html not found next to app.py")
     return FileResponse(REGISTER_PATH)
 
 @app.post("/auth/register")
@@ -402,18 +407,14 @@ def config(request: Request):
         raise HTTPException(401, "Login required")
     return {"version": VERSION, "max_upload_mb": MAX_UPLOAD_MB, "max_rpm": MAX_RPM}
 
-@app.get("/", include_in_schema=False)
-def root(request: Request):
-    if not is_authed(request):
-        raise HTTPException(401, "Login required")
-    return {"status": "ok", "try": "/docs", "ui": "/ui", "post": "/score"}
+
 
 @app.get("/ui", include_in_schema=False)
 def ui(request: Request):
     if not is_authed(request):
         return RedirectResponse(url="/login")
     if not INDEX_PATH.exists():
-        raise HTTPException(404, "index.html not found next to ats_app.py")
+        raise HTTPException(404, "index.html not found next to app.py")  # <- was ats_app.py
     return FileResponse(INDEX_PATH)
 
 # Reports (open for sharing)
