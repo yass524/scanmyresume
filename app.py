@@ -49,7 +49,11 @@ except ImportError:
 APP_TITLE = "ATS-like Resume Checker API"
 VERSION = "0.3.1"
 
+<<<<<<< HEAD
 @asynccontextmanager
+=======
+@asynccontextmanager #beydilo priority yekhali yebda2 el awel we yeshof law el model hayeshta8al aw la law la --> bel synonyms 
+>>>>>>> df72354 (ats_core updated)
 async def lifespan(app: FastAPI):
     # preload embeddings if enabled
     try:
@@ -59,10 +63,15 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print("Embeddings preload skipped/failed:", e)
     yield  # (place shutdown/cleanup after yield if you add any)
+<<<<<<< HEAD
 
 # pass lifespan when creating the app
 app = FastAPI(title=APP_TITLE, version=VERSION, lifespan=lifespan)
+=======
+>>>>>>> df72354 (ats_core updated)
 
+# pass lifespan when creating the app
+app = FastAPI(title=APP_TITLE, version=VERSION, lifespan=lifespan)
 # CORS (open in dev; tighten for prod)
 app.add_middleware(
     CORSMiddleware,
@@ -363,10 +372,14 @@ def is_authed(request: Request) -> bool:
     tok = request.cookies.get(SESSION_COOKIE)
     return bool(tok) and _verify_token(tok)
 
+<<<<<<< HEAD
 # ---------- Startup ----------
 
 
 # ---------- Routes ----------
+=======
+
+>>>>>>> df72354 (ats_core updated)
 @app.get("/login", include_in_schema=False)
 def login_page():
     if not LOGIN_PATH.exists():
