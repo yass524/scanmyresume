@@ -1,10 +1,17 @@
 fastapi==0.112.2
-uvicorn==0.30.6
-# Optional if you later add file parsing for PDFs/DOCX:
-pdfminer.six
-python-docx
-spacy
- scikit-learn
-pdfminer.six
-python-docx
-python-multipart
+uvicorn[standard]==0.30.6
+python-multipart>=0.0.9
+
+# File parsing
+pdfminer.six>=20221105
+python-docx>=0.8.11
+
+# PDF export
+reportlab>=4.0.0
+
+# Optional: semantic matching
+sentence-transformers>=2.2.2
+
+# (Currently optional in your codebase)
+scikit-learn>=1.4.0
+spacy>=3.7.0

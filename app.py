@@ -21,7 +21,9 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse, Red
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from ats_core import compute_score  # and _emb_model (lazy-imported in startup)
-
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, func
+from sqlalchemy.orm import sessionmaker, declarative_base
+from passlib.context import CryptContext
 # ---------- Optional deps ----------
 try:
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -48,9 +50,15 @@ except ImportError:
 # ---------- App & config ----------
 APP_TITLE = "ATS-like Resume Checker API"
 VERSION = "0.3.1"
-
+#--startup
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # create DB tables
+    try:
+        Base.metadata.create_all(engine)
+    except Exception as e:
+        print("DB init failed:", e)
+
     # preload embeddings if enabled
     try:
         if os.environ.get("EMB_ON", "0") == "1":
@@ -58,7 +66,8 @@ async def lifespan(app: FastAPI):
             _ = _emb_model
     except Exception as e:
         print("Embeddings preload skipped/failed:", e)
-    yield  # (place shutdown/cleanup after yield if you add any)
+
+    yield
 
 # pass lifespan when creating the app
 app = FastAPI(title=APP_TITLE, version=VERSION, lifespan=lifespan)
@@ -76,7 +85,28 @@ INDEX_PATH = HERE / "index.html"
 LOGIN_PATH = HERE / "login.html"
 REPORT_DIR = HERE / "reports"
 REPORT_DIR.mkdir(exist_ok=True)
+#-- database setup
+DB_URL = os.environ.get("DB_URL", f"sqlite:///{HERE / 'users.db'}")
+engine = create_engine(
+    DB_URL,
+    connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {}
+)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+Base = declarative_base()
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+def hash_password(p: str) -> str:
+    return pwd_context.hash(p)
+
+def verify_password(p: str, h: str) -> bool:
+    return pwd_context.verify(p, h)
 # Upload limits
 MAX_UPLOAD_MB = float(os.environ.get("MAX_UPLOAD_MB", "8"))
 MAX_BYTES = int(MAX_UPLOAD_MB * 1024 * 1024)
@@ -363,9 +393,6 @@ def is_authed(request: Request) -> bool:
     tok = request.cookies.get(SESSION_COOKIE)
     return bool(tok) and _verify_token(tok)
 
-# ---------- Startup ----------
-
-
 # ---------- Routes ----------
 @app.get("/login", include_in_schema=False)
 def login_page():
@@ -377,16 +404,32 @@ def login_page():
 async def auth_login(response: Response, username: str = Form(...), password: str = Form(...)):
     if not LOGIN_ENABLED:
         return {"ok": True, "redirect": "/ui"}
-    if username == DEMO_USER and password == DEMO_PASS:
-        tok = _make_token(username)
-        resp = JSONResponse({"ok": True, "redirect": "/ui"})
-        resp.set_cookie(
-            SESSION_COOKIE, tok,
-            httponly=True, samesite="lax",
-            secure=COOKIE_SECURE, max_age=60*60*24*7  # 7 days
-        )
-        return resp
-    raise HTTPException(401, "Invalid credentials")
+
+    u = username.strip().lower()
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter_by(username=u).first()
+    finally:
+        db.close()
+
+    ok = False
+    if user and verify_password(password, user.password_hash):
+        ok = True
+    elif u == DEMO_USER and password == DEMO_PASS:
+        ok = True
+
+    if not ok:
+        raise HTTPException(401, "Invalid credentials")
+
+    tok = _make_token(u)
+    resp = JSONResponse({"ok": True, "redirect": "/ui"})
+    resp.set_cookie(
+        SESSION_COOKIE, tok,
+        httponly=True, samesite="lax",
+        secure=COOKIE_SECURE, max_age=60*60*24*7
+    )
+    return resp
+
 
 @app.post("/auth/logout")
 def auth_logout():
@@ -502,3 +545,34 @@ async def score_file(
     report["id"] = rid
     report["share_url"] = f"/r/{rid}"
     return report
+
+@app.get("/register", include_in_schema=False)
+def register_page():
+    p = HERE / "register.html"
+    if not p.exists():
+        raise HTTPException(404, "register.html not found next to app.py")
+    return FileResponse(p)
+
+@app.post("/auth/register")
+async def auth_register(username: str = Form(...), password: str = Form(...)):
+    if not LOGIN_ENABLED:
+        raise HTTPException(400, "Registration disabled in this environment.")
+
+    u = username.strip().lower()
+    if not (3 <= len(u) <= 32):
+        raise HTTPException(400, "Username must be 3–32 characters.")
+    # allow letters, numbers, dot, underscore only
+    if not all(ch.isalnum() or ch in "._" for ch in u):
+        raise HTTPException(400, "Username may contain letters, numbers, dot, underscore.")
+    if len(password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters.")
+
+    db = SessionLocal()
+    try:
+        if db.query(User).filter_by(username=u).first():
+            raise HTTPException(400, "Username already exists.")
+        db.add(User(username=u, password_hash=hash_password(password)))
+        db.commit()
+        return {"ok": True, "message": "Account created. You can sign in now."}
+    finally:
+        db.close()

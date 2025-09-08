@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Create Account — ATS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .glass{background:rgba(2,6,23,.6);backdrop-filter:blur(10px)}
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <div class="min-h-screen flex items-center justify-center p-6">
+    <div class="w-full max-w-md glass rounded-2xl border border-slate-800 p-6 shadow-xl">
+      <h1 class="text-2xl font-semibold mb-1">Create your account</h1>
+      <p class="text-slate-400 mb-6">Sign up to use the ATS Resume Checker.</p>
+
+      <form id="f" class="space-y-4">
+        <div>
+          <label class="text-sm text-slate-300">Username</label>
+          <input name="username" required minlength="3" maxlength="32"
+            class="mt-1 w-full rounded-xl bg-slate-900/70 border border-slate-800 p-3"
+            placeholder="e.g. mohamed_sherif"/>
+        </div>
+        <div>
+          <label class="text-sm text-slate-300">Password</label>
+          <input type="password" name="password" required minlength="8"
+            class="mt-1 w-full rounded-xl bg-slate-900/70 border border-slate-800 p-3"
+            placeholder="Min 8 characters"/>
+        </div>
+        <button class="w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500">
+          Create account
+        </button>
+        <p id="msg" class="text-sm text-rose-300 h-5"></p>
+      </form>
+
+      <div class="text-sm text-slate-400 mt-4">
+        Already have an account?
+        <a class="text-cyan-400 hover:underline" href="/login">Sign in</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('f');
+    const msg = document.getElementById('msg');
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      msg.textContent = "";
+      const fd = new FormData(form);
+      try{
+        const res = await fetch('/auth/register', { method:'POST', body: fd });
+        const json = await res.json().catch(()=> ({}));
+        if(!res.ok){ throw new Error(json?.detail || ('HTTP '+res.status)); }
+        msg.classList.remove('text-rose-300'); msg.classList.add('text-emerald-300');
+        msg.textContent = "Account created! Redirecting to sign in…";
+        setTimeout(()=> location.href='/login', 900);
+      }catch(err){
+        msg.classList.remove('text-emerald-300'); msg.classList.add('text-rose-300');
+        msg.textContent = err.message;
+      }
+    };
+  </script>
+</body>
+</html>
