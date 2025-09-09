@@ -1,0 +1,98 @@
+{
+  "score": 74.3,
+  "components": {
+    "required_coverage": 85.7,
+    "overall_coverage": 85.7,
+    "frequency_bonus_required": 23.3,
+    "frequency_bonus_overall": 15.6,
+    "section_hygiene": 100.0,
+    "bullets_ratio_%": 0.0,
+    "action_verb_ratio_%": 0.0,
+    "length_penalty_applied": false,
+    "stuffing_penalty_applied": false,
+    "ai_on": false,
+    "ai_semantic_matches": 0
+  },
+  "matched_keywords": [
+    "c",
+    "matlab",
+    "python",
+    "schneider electric",
+    "simulink",
+    "solidworks"
+  ],
+  "missing_keywords": [
+    "plc"
+  ],
+  "required_missing": [
+    "plc"
+  ],
+  "preferred_missing": [],
+  "gaps_by_category": {
+    "controls_automation": [
+      "plc"
+    ]
+  },
+  "suggested_bullets": [
+    "Add a concrete achievement using 'plc' (e.g., “Implemented plc to improve a KPI by X%”).",
+    "Tailor keywords to the job description (mirror terminology where appropriate).",
+    "Use bullets for experience; target ≥25% of lines as bullets.",
+    "Start bullets with strong action verbs (Led, Built, Optimized, Spearheaded…).",
+    "Add a professional link (GitHub/LinkedIn/Portfolio) to showcase projects.",
+    "Balance soft skills with evidence (teamwork, leadership) tied to measurable results."
+  ],
+  "avg_sentence_length": 4.6,
+  "section_presence": {
+    "summary": true,
+    "experience": true,
+    "projects": true,
+    "education": true,
+    "skills": true,
+    "certifications": true,
+    "publications": false,
+    "work experience": false,
+    "professional experience": false,
+    "skills & tools": false,
+    "tech stack": false,
+    "professional summary": false,
+    "objective": false,
+    "profile summary": false
+  },
+  "top_resume_terms": [
+    "sep",
+    "automation",
+    "control",
+    "electrical",
+    "2024",
+    "safety",
+    "complete",
+    "simulink",
+    "experience",
+    "jul",
+    "datapower",
+    "international",
+    "university",
+    "giu",
+    "2022",
+    "high",
+    "school",
+    "autosar",
+    "learned",
+    "gained"
+  ],
+  "jd_skill_terms": [
+    "c",
+    "matlab",
+    "plc",
+    "python",
+    "schneider electric",
+    "simulink",
+    "solidworks"
+  ],
+  "ai_matched_terms": [],
+  "ai_similarities": {},
+  "format_warnings": [
+    "Use bullets for experience; aim for ≥25% of lines as bullets.",
+    "Start more bullets with action verbs (Built, Implemented, Optimized…)."
+  ]
+}

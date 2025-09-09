@@ -1,0 +1,99 @@
+{
+  "score": 66.1,
+  "components": {
+    "required_coverage": 85.7,
+    "overall_coverage": 85.7,
+    "frequency_bonus_required": 33.3,
+    "frequency_bonus_overall": 22.2,
+    "section_hygiene": 0.0,
+    "bullets_ratio_%": 0.0,
+    "action_verb_ratio_%": 0.0,
+    "length_penalty_applied": false,
+    "stuffing_penalty_applied": false,
+    "ai_on": false,
+    "ai_semantic_matches": 0
+  },
+  "matched_keywords": [
+    "c",
+    "plc",
+    "python",
+    "schneider electric",
+    "simulink",
+    "solidworks"
+  ],
+  "missing_keywords": [
+    "matlab"
+  ],
+  "required_missing": [
+    "matlab"
+  ],
+  "preferred_missing": [],
+  "gaps_by_category": {
+    "programming": [
+      "matlab"
+    ]
+  },
+  "suggested_bullets": [
+    "Add a concrete achievement using 'matlab' (e.g., “Implemented matlab to improve a KPI by X%”).",
+    "Add an 'Experience' or 'Projects' section highlighting relevant work.",
+    "Tailor keywords to the job description (mirror terminology where appropriate).",
+    "Use bullets for experience; target ≥25% of lines as bullets.",
+    "Start bullets with strong action verbs (Led, Built, Optimized, Spearheaded…).",
+    "Split long lines into concise bullets (~1–2 lines each) to improve readability."
+  ],
+  "avg_sentence_length": 23.3,
+  "section_presence": {
+    "summary": true,
+    "experience": false,
+    "projects": false,
+    "education": false,
+    "skills": false,
+    "certifications": false,
+    "publications": false,
+    "work experience": false,
+    "professional experience": false,
+    "skills & tools": false,
+    "tech stack": false,
+    "professional summary": false,
+    "objective": false,
+    "profile summary": false
+  },
+  "top_resume_terms": [
+    "control",
+    "electrical",
+    "sep",
+    "industrial",
+    "automation",
+    "systems",
+    "engineering",
+    "intern",
+    "jul",
+    "motor",
+    "safety",
+    "complete",
+    "simulink",
+    "hands-on",
+    "experience",
+    "classic",
+    "schneider",
+    "design",
+    "june",
+    "datapower"
+  ],
+  "jd_skill_terms": [
+    "c",
+    "matlab",
+    "plc",
+    "python",
+    "schneider electric",
+    "simulink",
+    "solidworks"
+  ],
+  "ai_matched_terms": [],
+  "ai_similarities": {},
+  "format_warnings": [
+    "Add standard headings: EXPERIENCE, SKILLS, PROJECTS, EDUCATION.",
+    "Use bullets for experience; aim for ≥25% of lines as bullets.",
+    "Start more bullets with action verbs (Built, Implemented, Optimized…)."
+  ]
+}

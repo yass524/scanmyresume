@@ -1,19 +1,17 @@
 # ats_core.py
-"""
-ATS scoring core (upgraded to pass current test pack).
-- Canonical skills + aliases with regex word-boundaries
-- JD parsing into Required vs Preferred
-- Section-weighted frequency bonuses
-- Bullet/action-verb quality
-- Length & stuffing penalties (dynamic)
-- Optional semantic matching with alias-centroid embeddings
-"""
 
 from __future__ import annotations
 import os, re, math
 from collections import Counter, defaultdict
 from typing import Dict, List, Tuple, Set, Iterable
-
+from ats_skills import SKILLS
+from ats_skills import ALIAS_RE as _ALIAS_RE
+from ats_skills import CANON_CATEGORY as _CANON_CATEGORY
+from ats_skills import CANON_ALIASES as _CANON_ALIASES
+from ats_sections import split_sections as _split_sections
+from ats_sections import SECTION_WEIGHTS  
+from ats_sections import is_header_line as _is_header_line
+from ats_lexicon import ACTION_VERBS, STOPWORDS,RE_DIGIT,RE_CURRENCY,BULLET_MARKERS,RE_EMAIL,RE_PHONE,RE_PCT,RE_URL
 # -----------------------------
 # Config / thresholds (env-tunable)
 # -----------------------------
@@ -38,286 +36,10 @@ PENALTY_LENGTH   = 5.0  # was 8.0
 FREQ_CAP_REQUIRED = 4
 FREQ_CAP_OVERALL  = 6
 
-# Section weights
-SECTION_WEIGHTS = {# experience mehataga tetzebet
-    "experience": 1.0, "work experience": 1.0, "professional experience": 1.0,
-    "projects": 0.9, "summary": 0.8, "profile": 0.8,
-    "education": 0.6, "skills": 0.6, "skills & tools": 0.6, "tech stack": 0.6,
-}
-
 # Bullet/action-verb expectations
 MIN_BULLET_RATIO = 25.0   # %
 MIN_VERB_RATIO   = 15.0   # %
 
-ACTION_VERBS = {
-    #  Core technical / building
-    "built","implemented","optimized","created","designed","developed","deployed",
-    "launched","engineered","constructed","assembled","programmed","coded","automated",
-    "refactored","configured","integrated","tested","validated","modeled","simulated",
-    "calibrated","commissioned","debugged","diagnosed","repaired","tuned","maintained",
-
-    # Leadership / initiative
-    "led","spearheaded","orchestrated","coordinated","directed","supervised","oversaw",
-    "managed","executed","initiated","organized","owned","facilitated","mentored",
-    "trained","supported","guided",
-
-    # Achievement / results
-    "delivered","achieved","exceeded","improved","enhanced","expanded","scaled","increased",
-    "reduced","streamlined","upgraded","resolved","strengthened","surpassed","won","earned",
-
-    # Innovation / strategy
-    "architected","conceived","devised","formulated","innovated","pioneered","strategized",
-    "devised","introduced","proposed","instituted","transformed","modernized",
-
-    #  Collaboration / communication
-    "collaborated","partnered","contributed","consulted","advised","presented","communicated",
-    "drafted","documented","reviewed","negotiated","liaised","aligned","engaged","shared",
-    "informed","advocated","supported","facilitated"
-}
-
-STOPWORDS = {
-    "a","an","the","and","or","but","if","then","with","for","to","of","in","on","by","from","at","as",
-    "is","are","was","were","be","been","being","this","that","these","those","it","its","we","our","you",
-    "i","they","their","he","she","them","your","my","me"
-}
-
-# -------------------------------------------------
-# Skill map (extend as you like)
-# -------------------------------------------------
-SKILLS: Dict[str, Dict[str, Set[str]]] = {
-    # ---------- AI / ML ----------
-    "ml_ai": {
-        "computer vision": {"computer vision","cv","image processing","vision","machine vision"},
-        "pytorch": {"pytorch","torch"},
-        "tensorflow": {"tensorflow","tf"},
-        "opencv": {"opencv","open cv"},
-        "onnx": {"onnx"},
-        "onnxruntime": {"onnxruntime","onnx runtime"},
-        "yolo": {"yolo","yolov5","yolov7","yolov8","yolov9"},
-        "transformers": {"transformers","huggingface","hf transformers"},
-        "sklearn": {"scikit-learn","sklearn"},
-        "xgboost": {"xgboost"},
-        "lightgbm": {"lightgbm","lgbm"},
-        "catboost": {"catboost"},
-        "numpy": {"numpy"},
-        "pandas": {"pandas"},
-        "mlflow": {"mlflow"},
-        "wandb": {"weights & biases","weights and biases","wandb"},
-        "inference": {"inference","serving","model serving"},
-        "tensorrt": {"tensorrt","trt"},
-        "tflite": {"tflite","tensorflow lite"},
-        "openvino": {"openvino"},
-        "triton": {"triton inference server","triton","nv triton"},
-        "langchain": {"langchain"},
-        "spacy": {"spacy"},
-        "nltk": {"nltk"},
-    },
-
-    # ---------- Programming ----------
-    "programming": {
-        "python": {"python"},
-        "c++": {"c++","cpp"},
-        "c": {"c"},
-        "c#": {"c#",".net","dotnet"},
-        "java": {"java"},
-        "go": {"go","golang"},
-        "rust": {"rust"},
-        "scala": {"scala"},
-        "matlab": {"matlab"},
-        "simulink": {"simulink"},
-        "sql": {"sql"},
-        "bash": {"bash","shell","sh"},
-        "powershell": {"powershell","ps"},
-        "javascript": {"javascript","js"},
-        "typescript": {"typescript","ts"},
-        "r": {"r","r language"},
-        "php": {"php"},
-        "perl": {"perl"},
-    },
-
-    # ---------- Cloud / DevOps ----------
-    "cloud_devops": {
-        "docker": {"docker","containers","containerization"},
-        "kubernetes": {"kubernetes","k8s"},
-        "linux": {"linux","ubuntu","debian","centos","rhel"},
-        "aws": {"aws","amazon web services","sagemaker","ec2","s3","ecr","lambda"},
-        "azure": {"azure","aks","azure devops"},
-        "gcp": {"gcp","google cloud","gke","bigquery"},
-        "terraform": {"terraform","iac","infrastructure as code"},
-        "ansible": {"ansible"},
-        "helm": {"helm","helm charts"},
-        "prometheus": {"prometheus"},
-        "grafana": {"grafana"},
-        "ci/cd": {"ci/cd","cicd","github actions","gitlab ci","jenkins"},
-    },
-
-    # ---------- Controls / Automation ----------
-    "controls_automation": {
-        "plc": {"plc","programmable logic controller"},
-        "siemens s7": {"siemens s7","s7-1200","s7-1500","tia portal","wincc"},
-        "allen-bradley": {"allen-bradley","rockwell","controllogix","studio 5000","rslogix"},
-        "schneider electric": {"schneider electric","m340","m580","ecostruxure"},
-        "mitsubishi": {"mitsubishi","fx5u","gx works"},
-        "omron": {"omron","sysmac","cx-programmer"},
-        "beckhoff": {"beckhoff","twincat","ethercat"},
-        "codesys": {"codesys"},
-        "scada": {"scada","hmi","ignition","factorytalk","wonderware"},
-        "vfd": {"vfd","variable frequency drive","drive"},
-        "servo": {"servo","servo drive","motion control"},
-        "instrumentation": {"instrumentation","sensors","transmitters","analog io","digital io"},
-        "modbus": {"modbus","modbus tcp","modbus rtu"},
-        "profinet": {"profinet","profibus"},
-        "ethernet/ip": {"ethernet/ip","ethernet ip"},
-        "opc ua": {"opc ua","opcua"},
-        "mqtt": {"mqtt"},
-        "cmms": {"cmms","sap pm","maximo"},
-        "rca": {"root cause analysis","5-why","fmea"},
-    },
-
-    # ---------- Embedded / Edge ----------
-    "embedded": {
-        "arduino": {"arduino"},
-        "esp32": {"esp32","esp-idf"},
-        "stm32": {"stm32","stm32cube"},
-        "pic": {"pic","mplab","xc8"},
-        "raspberry pi": {"raspberry pi","rpi"},
-        "freertos": {"freertos"},
-        "zephyr": {"zephyr rtos","zephyr"},
-        "uart": {"uart","serial"},
-        "i2c": {"i2c"},
-        "spi": {"spi"},
-        "can": {"can","can bus","canopen"},
-        "pwm": {"pwm"},
-    },
-
-    # ---------- Data Engineering ----------
-    "data_eng": {
-        "airflow": {"airflow"},
-        "spark": {"spark","pyspark"},
-        "kafka": {"kafka"},
-        "flink": {"flink"},
-        "dbt": {"dbt"},
-        "redshift": {"redshift"},
-        "glue": {"glue","aws glue"},
-        "snowflake": {"snowflake"},
-        "bigquery": {"bigquery"},
-        "databricks": {"databricks"},
-        "hive": {"hive"},
-    },
-
-    # ---------- Web / Frontend / Backend ----------
-    "web": {
-        "react": {"react"},
-        "next.js": {"next.js","nextjs"},
-        "vue": {"vue","vue.js","vuejs"},
-        "angular": {"angular"},
-        "node": {"node","node.js","nodejs"},
-        "express": {"express"},
-        "django": {"django"},
-        "graphql": {"graphql","gql"},
-        "rest api": {"rest","rest api"},
-    },
-
-    # ---------- Mobile ----------
-    "mobile": {
-        "android": {"android","kotlin","java (android)"},
-        "ios": {"ios","swift"},
-        "react native": {"react native"},
-        "flutter": {"flutter","dart"},
-    },
-
-    # ---------- Databases ----------
-    "databases": {
-        "postgresql": {"postgresql","postgres","psql"},
-        "mysql": {"mysql"},
-        "sqlite": {"sqlite"},
-        "mongodb": {"mongodb","mongo"},
-        "redis": {"redis"},
-        "elasticsearch": {"elasticsearch","elastic","es"},
-        "cassandra": {"cassandra"},
-        "neo4j": {"neo4j","graph db","graph database"},
-    },
-
-    # ---------- Analytics / BI ----------
-    "analytics_bi": {
-        "excel": {"excel","microsoft excel"},
-        "power bi": {"power bi","powerbi"},
-        "tableau": {"tableau"},
-        "looker": {"looker","google data studio"},
-        "superset": {"superset"},
-        "matplotlib": {"matplotlib"},
-        "plotly": {"plotly"},
-    },
-
-    # ---------- Product / PM ----------
-    "product_pm": {
-        "jira": {"jira"},
-        "confluence": {"confluence"},
-        "trello": {"trello"},
-        "asana": {"asana"},
-        "notion": {"notion"},
-        "miro": {"miro"},
-        "agile": {"agile"},
-        "scrum": {"scrum"},
-        "kanban": {"kanban"},
-        "okrs": {"okrs"},
-    },
-
-    # ---------- Business / Finance ----------
-    "business_finance": {
-        "sap": {"sap","sap erp","sap hana"},
-        "oracle erp": {"oracle erp"},
-        "netsuite": {"netsuite"},
-        "quickbooks": {"quickbooks"},
-        "salesforce": {"salesforce"},
-        "hubspot": {"hubspot"},
-        "zoho": {"zoho"},
-        "financial modeling": {"financial modeling","valuation"},
-        "accounting": {"accounting","bookkeeping"},
-        "procurement": {"procurement"},
-    },
-
-    # ---------- Architecture / Civil / Mechanical ----------
-    "engineering_other": {
-        "autocad": {"autocad","auto cad"},
-        "solidworks": {"solidworks"},
-        "revit": {"revit"},
-        "staad": {"staad","staad pro"},
-        "ansys": {"ansys"},
-        "catia": {"catia"},
-        "etabs": {"etabs"},
-        "primavera": {"primavera","p6"},
-        "ms project": {"ms project","microsoft project"},
-        "hvac": {"hvac"},
-        "bim": {"bim","building information modeling"},
-        "sap2000": {"sap2000"},
-    },
-
-    # ---------- Design / UX ----------
-    "design_ux": {
-        "figma": {"figma"},
-        "adobe xd": {"adobe xd"},
-        "illustrator": {"illustrator","adobe illustrator"},
-        "photoshop": {"photoshop","adobe photoshop"},
-        "ux research": {"ux research","user research"},
-        "wireframing": {"wireframing"},
-        "prototyping": {"prototyping"},
-        "indesign": {"indesign","adobe indesign"},
-        "after effects": {"after effects","ae"},
-        "premiere": {"premiere","premiere pro"},
-    },
-}
-
-# Pre-compile alias regex & reverse maps
-_ALIAS_RE: Dict[str, Tuple[str, re.Pattern]] = {}
-_CANON_CATEGORY: Dict[str, str] = {}
-_CANON_ALIASES: Dict[str, Set[str]] = {}
-for cat, items in SKILLS.items():
-    for canonical, aliases in items.items():
-        _CANON_CATEGORY[canonical] = cat
-        _CANON_ALIASES[canonical] = set(aliases) | {canonical}
-        for alias in _CANON_ALIASES[canonical]:
-            _ALIAS_RE[alias] = (canonical, re.compile(rf"\b{re.escape(alias)}\b", re.I))
 
 # -------------- Embeddings (optional) --------------
 _emb_model = None
@@ -372,38 +94,7 @@ def _ngrams(words: List[str], n: int) -> Iterable[str]:
     for i in range(len(words)-n+1):
         yield " ".join(words[i:i+n])
 
-# ------------- Sections -------------
-_SECTION_PATTERNS = [
-    "work experience","professional experience","experience","projects","education",
-    "skills & tools","tech stack","skills","certifications","publications","summary","profile","objective",
-]
-def _split_sections(text: str) -> Tuple[Dict[str, bool], Dict[str, str]]:
-    lines = [ln.strip() for ln in text.splitlines()]
-    sections_present = {k: False for k in _SECTION_PATTERNS}
-    current = "summary"
-    buckets: Dict[str, List[str]] = defaultdict(list)
-    for ln in lines:
-        lower = ln.strip().lower()
-        hit = None
-        for name in _SECTION_PATTERNS:
-            if re.fullmatch(rf"{re.escape(name)}[:\- ]*", lower):
-                hit = name
-                break
-        if hit:
-            current = hit
-            sections_present[hit] = True
-        else:
-            buckets[current].append(ln)
-    sections_text = {k: "\n".join(v).strip() for k,v in buckets.items()}
-    for k in list(sections_present.keys()):
-        if k in sections_text and sections_text[k]:
-            sections_present[k] = True
-    return sections_present, sections_text
-
 # ------------- Bullet / verbs -------------
-def _is_header_line(ln: str) -> bool:
-    low = ln.strip().lower()
-    return any(re.fullmatch(rf"{re.escape(h)}[:\- ]*", low) for h in _SECTION_PATTERNS)
 
 def _bullet_and_verb_metrics(text: str) -> Tuple[float, float]:
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
@@ -559,16 +250,7 @@ MAX_LINE_LEN_CHARS    = 180    # lines longer than this could be walls of text
 MAX_SOFT_SUGGESTIONS  = 3      # don't spam soft-skill advice
 SUGGESTIONS_MAX_OUT   = 14     # final cap for user-facing suggestions
 
-# Common regexes (compile once)
-import re
-RE_EMAIL  = re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.I)
-RE_PHONE  = re.compile(r"(\+?\d[\d\-\s()]{6,}\d)")
-RE_URL    = re.compile(r"(https?://|www\.)\S+", re.I)
-RE_DIGIT  = re.compile(r"\d")
-RE_PCT    = re.compile(r"%")
-RE_CURRENCY = re.compile(r"[$€£]|EGP|USD|EUR|GBP", re.I)
 
-BULLET_MARKERS = {"•", "-", "–", "—", "*"}
 ACTION_VERBS = {...}  # use your expanded set here (kept external to keep this block short)
 
 # --------------- Light-weight analyzers ---------------- 
