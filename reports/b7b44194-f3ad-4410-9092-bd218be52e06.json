@@ -1,0 +1,120 @@
+{
+  "score": 15.1,
+  "components": {
+    "required_coverage": 22.2,
+    "overall_coverage": 20.0,
+    "frequency_bonus_required": 0.0,
+    "frequency_bonus_overall": 0.0,
+    "section_hygiene": 50.0,
+    "bullets_ratio_%": 0.0,
+    "action_verb_ratio_%": 0.0,
+    "length_penalty_applied": true,
+    "stuffing_penalty_applied": false,
+    "ai_on": false,
+    "ai_semantic_matches": 0
+  },
+  "matched_keywords": [
+    "plc",
+    "scada"
+  ],
+  "missing_keywords": [
+    "allen-bradley",
+    "instrumentation",
+    "modbus",
+    "opc ua",
+    "profinet",
+    "rca",
+    "servo",
+    "siemens s7"
+  ],
+  "required_missing": [
+    "instrumentation",
+    "modbus",
+    "opc ua",
+    "profinet",
+    "rca",
+    "servo",
+    "siemens s7"
+  ],
+  "preferred_missing": [
+    "allen-bradley"
+  ],
+  "gaps_by_category": {
+    "controls_automation": [
+      "instrumentation",
+      "modbus",
+      "opc ua",
+      "profinet",
+      "rca",
+      "servo",
+      "siemens s7",
+      "allen-bradley"
+    ]
+  },
+  "suggested_bullets": [
+    "Add a concrete achievement using 'instrumentation' (e.g., “Implemented instrumentation to improve a KPI by X%”).",
+    "Add a concrete achievement using 'modbus' (e.g., “Implemented modbus to improve a KPI by X%”).",
+    "Add a concrete achievement using 'opc ua' (e.g., “Implemented opc ua to improve a KPI by X%”).",
+    "Add a concrete achievement using 'profinet' (e.g., “Implemented profinet to improve a KPI by X%”).",
+    "Add a concrete achievement using 'rca' (e.g., “Implemented rca to improve a KPI by X%”).",
+    "Add a concrete achievement using 'servo' (e.g., “Implemented servo to improve a KPI by X%”).",
+    "Add a concrete achievement using 'siemens s7' (e.g., “Implemented siemens s7 to improve a KPI by X%”).",
+    "Quantify achievements (e.g., “Reduced downtime by 15%”, “Saved $50K/year”).",
+    "Include at least email and phone (and optionally city/country).",
+    "Add an 'Experience' or 'Projects' section highlighting relevant work.",
+    "Tailor keywords to the job description (mirror terminology where appropriate).",
+    "If relevant, mention 'allen-bradley' with one concise bullet or in Skills.",
+    "Use bullets for experience; target ≥25% of lines as bullets.",
+    "Start bullets with strong action verbs (Led, Built, Optimized, Spearheaded…)."
+  ],
+  "avg_sentence_length": 3.9,
+  "section_presence": {
+    "summary": true,
+    "experience": true,
+    "projects": false,
+    "education": false,
+    "skills": true,
+    "certifications": false,
+    "publications": false,
+    "work experience": false,
+    "professional experience": false,
+    "skills & tools": false,
+    "tech stack": false,
+    "professional summary": false,
+    "objective": false,
+    "profile summary": false
+  },
+  "top_resume_terms": [
+    "plc",
+    "siemens",
+    "automation",
+    "scada",
+    "scada.",
+    "summary",
+    "siemens.",
+    "automation.",
+    "work",
+    "experience",
+    "none.",
+    "skills"
+  ],
+  "jd_skill_terms": [
+    "allen-bradley",
+    "instrumentation",
+    "modbus",
+    "opc ua",
+    "plc",
+    "profinet",
+    "rca",
+    "scada",
+    "servo",
+    "siemens s7"
+  ],
+  "ai_matched_terms": [],
+  "ai_similarities": {},
+  "format_warnings": [
+    "Add standard headings: PROJECTS, EDUCATION.",
+    "Use bullets for experience; aim for ≥25% of lines as bullets.",
+    "Start more bullets with action verbs (Built, Implemented, Optimized…)."
+  ]
+}

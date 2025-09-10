@@ -1,0 +1,108 @@
+{
+  "score": 73.0,
+  "components": {
+    "required_coverage": 77.8,
+    "overall_coverage": 80.0,
+    "frequency_bonus_required": 43.9,
+    "frequency_bonus_overall": 29.6,
+    "section_hygiene": 100.0,
+    "bullets_ratio_%": 73.3,
+    "action_verb_ratio_%": 0.0,
+    "length_penalty_applied": false,
+    "stuffing_penalty_applied": false,
+    "ai_on": false,
+    "ai_semantic_matches": 0
+  },
+  "matched_keywords": [
+    "allen-bradley",
+    "modbus",
+    "opc ua",
+    "plc",
+    "profinet",
+    "scada",
+    "servo",
+    "siemens s7"
+  ],
+  "missing_keywords": [
+    "instrumentation",
+    "rca"
+  ],
+  "required_missing": [
+    "instrumentation",
+    "rca"
+  ],
+  "preferred_missing": [],
+  "gaps_by_category": {
+    "controls_automation": [
+      "instrumentation",
+      "rca"
+    ]
+  },
+  "suggested_bullets": [
+    "Add a concrete achievement using 'instrumentation' (e.g., “Implemented instrumentation to improve a KPI by X%”).",
+    "Add a concrete achievement using 'rca' (e.g., “Implemented rca to improve a KPI by X%”).",
+    "Include at least email and phone (and optionally city/country).",
+    "Tailor keywords to the job description (mirror terminology where appropriate).",
+    "Start bullets with strong action verbs (Led, Built, Optimized, Spearheaded…).",
+    "Add a professional link (GitHub/LinkedIn/Portfolio) to showcase projects.",
+    "Split long lines into concise bullets (~1–2 lines each) to improve readability.",
+    "Avoid multi-column layouts/tables; use a single-column, ATS-friendly format.",
+    "Balance soft skills with evidence (teamwork, leadership) tied to measurable results."
+  ],
+  "avg_sentence_length": 6.3,
+  "section_presence": {
+    "summary": true,
+    "experience": true,
+    "projects": true,
+    "education": true,
+    "skills": true,
+    "certifications": false,
+    "publications": false,
+    "work experience": false,
+    "professional experience": false,
+    "skills & tools": false,
+    "tech stack": false,
+    "professional summary": false,
+    "objective": false,
+    "profile summary": false
+  },
+  "top_resume_terms": [
+    "siemens",
+    "control",
+    "automation",
+    "engineer",
+    "experience",
+    "2020",
+    "wincc",
+    "monitoring.",
+    "schneider",
+    "2018",
+    "modbus",
+    "networks",
+    "allen-bradley",
+    "summary",
+    "5+",
+    "years",
+    "designing",
+    "commissioning",
+    "plc/scada",
+    "systems"
+  ],
+  "jd_skill_terms": [
+    "allen-bradley",
+    "instrumentation",
+    "modbus",
+    "opc ua",
+    "plc",
+    "profinet",
+    "rca",
+    "scada",
+    "servo",
+    "siemens s7"
+  ],
+  "ai_matched_terms": [],
+  "ai_similarities": {},
+  "format_warnings": [
+    "Start more bullets with action verbs (Built, Implemented, Optimized…)."
+  ]
+}

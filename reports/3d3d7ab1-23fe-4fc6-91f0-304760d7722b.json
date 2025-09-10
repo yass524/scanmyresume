@@ -1,0 +1,105 @@
+{
+  "score": 83.3,
+  "components": {
+    "required_coverage": 88.9,
+    "overall_coverage": 90.0,
+    "frequency_bonus_required": 59.7,
+    "frequency_bonus_overall": 38.1,
+    "section_hygiene": 100.0,
+    "bullets_ratio_%": 81.0,
+    "action_verb_ratio_%": 0.0,
+    "length_penalty_applied": false,
+    "stuffing_penalty_applied": false,
+    "ai_on": false,
+    "ai_semantic_matches": 0
+  },
+  "matched_keywords": [
+    "allen-bradley",
+    "instrumentation",
+    "modbus",
+    "plc",
+    "profinet",
+    "rca",
+    "scada",
+    "servo",
+    "siemens s7"
+  ],
+  "missing_keywords": [
+    "opc ua"
+  ],
+  "required_missing": [
+    "opc ua"
+  ],
+  "preferred_missing": [],
+  "gaps_by_category": {
+    "controls_automation": [
+      "opc ua"
+    ]
+  },
+  "suggested_bullets": [
+    "Add a concrete achievement using 'opc ua' (e.g., “Implemented opc ua to improve a KPI by X%”).",
+    "Include at least email and phone (and optionally city/country).",
+    "Tailor keywords to the job description (mirror terminology where appropriate).",
+    "Start bullets with strong action verbs (Led, Built, Optimized, Spearheaded…).",
+    "Add a professional link (GitHub/LinkedIn/Portfolio) to showcase projects.",
+    "Split long lines into concise bullets (~1–2 lines each) to improve readability.",
+    "Avoid multi-column layouts/tables; use a single-column, ATS-friendly format.",
+    "Balance soft skills with evidence (teamwork, leadership) tied to measurable results."
+  ],
+  "avg_sentence_length": 7.9,
+  "section_presence": {
+    "summary": true,
+    "experience": true,
+    "projects": true,
+    "education": true,
+    "skills": true,
+    "certifications": true,
+    "publications": false,
+    "work experience": false,
+    "professional experience": false,
+    "skills & tools": false,
+    "tech stack": false,
+    "professional summary": false,
+    "objective": false,
+    "profile summary": false
+  },
+  "top_resume_terms": [
+    "siemens",
+    "rockwell",
+    "automation",
+    "industrial",
+    "control",
+    "plc",
+    "measurement",
+    "flow",
+    "engineer",
+    "experience",
+    "systems.",
+    "programming",
+    "hmi/scada",
+    "calibration",
+    "2019",
+    "s7",
+    "compactlogix",
+    "lines.",
+    "factorytalk",
+    "wincc"
+  ],
+  "jd_skill_terms": [
+    "allen-bradley",
+    "instrumentation",
+    "modbus",
+    "opc ua",
+    "plc",
+    "profinet",
+    "rca",
+    "scada",
+    "servo",
+    "siemens s7"
+  ],
+  "ai_matched_terms": [],
+  "ai_similarities": {},
+  "format_warnings": [
+    "Start more bullets with action verbs (Built, Implemented, Optimized…)."
+  ]
+}
