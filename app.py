@@ -1,5 +1,3 @@
-
-
 import os
 import json
 import uuid
@@ -19,6 +17,8 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, func
 from sqlalchemy.orm import sessionmaker, declarative_base
 from passlib.context import CryptContext
 
+from reportlab.platypus import Table
+from reportlab.lib import colors
 from ats_core import compute_score, _maybe_load_model
 
 # ---------- Optional deps (PDF, parsing) ----------
@@ -189,6 +189,44 @@ def docx_stats_from_bytes(b: bytes) -> dict:
     return stats
 
 # PDF
+def _canonical_section_rows(secs: dict) -> list[list[str]]:
+    """Collapse alias families so we show each section once, cleanly."""
+    yes = lambda b: "Yes" if b else "No"
+
+    experience = bool(
+        secs.get("experience")
+        or secs.get("work experience")
+        or secs.get("professional experience")
+    )
+    skills = bool(
+        secs.get("skills")
+        or secs.get("skills & tools")
+        or secs.get("tech stack")
+    )
+    summary = bool(
+        secs.get("summary")
+        or secs.get("professional summary")
+        or secs.get("profile")
+        or secs.get("profile summary")
+        or secs.get("objective")
+    )
+    projects = bool(secs.get("projects"))
+    education = bool(secs.get("education"))
+    certifications = bool(secs.get("certifications"))
+    publications = bool(secs.get("publications"))
+
+    # Only canonical rows; aliases are intentionally omitted.
+    rows = [
+        ["Experience",     yes(experience)],
+        ["Projects",       yes(projects)],
+        ["Education",      yes(education)],
+        ["Skills",         yes(skills)],
+        ["Certifications", yes(certifications)],
+        ["Publications",   yes(publications)],
+        ["Summary",        yes(summary)],
+    ]
+    return rows
+
 _PDF_UNICODE = False
 _PDF_FONT_NAME = "UIUnicode"
 
@@ -226,38 +264,76 @@ def build_pdf(report: dict) -> bytes:
     if not _PDF_OK:
         raise HTTPException(500, "PDF export requires 'reportlab'. Install it")
     _ensure_pdf_font()
+
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, title="ATS Resume Check Report")
     styles = getSampleStyleSheet()
     if _PDF_UNICODE:
-        for k in ("Heading1","Heading2","Heading3","BodyText"):
+        for k in ("Heading1", "Heading2", "Heading3", "BodyText"):
             styles[k].fontName = _PDF_FONT_NAME
     H1, H2, H3, P = styles["Heading1"], styles["Heading2"], styles["Heading3"], styles["BodyText"]
 
-    from reportlab.platypus import Table
-    from reportlab.lib import colors
-
-    def kv_table(d: dict, keys: list[str]) -> Table:
-        rows = [["Metric","Value"]]
+    def kv_table(d: dict, keys: list[str]):
+        rows = [["Metric", "Value"]]
         for k in keys:
             v = d.get(k, "")
             rows.append([k.replace("_", " ").title(), str(v)])
         t = Table(rows, colWidths=[200, 320])
-        from reportlab.platypus import TableStyle
         t.setStyle(TableStyle([
-            ("BACKGROUND",(0,0),(-1,0), colors.HexColor("#0f172a")),
-            ("TEXTCOLOR",(0,0),(-1,0), colors.whitesmoke),
-            ("INNERGRID",(0,0),(-1,-1), 0.25, colors.grey),
-            ("BOX",(0,0),(-1,-1), 0.5, colors.grey),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+            ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.grey),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.grey),
         ]))
         return t
+
+    # collapse aliases → single canonical rows
+    def _canonical_section_rows(secs: dict) -> list[list[str]]:
+        yn = lambda b: "Yes" if b else "No"
+
+        experience = bool(
+            secs.get("experience")
+            or secs.get("work experience")
+            or secs.get("professional experience")
+        )
+        skills = bool(
+            secs.get("skills")
+            or secs.get("skills & tools")
+            or secs.get("tech stack")
+        )
+        summary = bool(
+            secs.get("summary")
+            or secs.get("professional summary")
+            or secs.get("profile")
+            or secs.get("profile summary")
+            or secs.get("objective")
+        )
+        projects       = bool(secs.get("projects"))
+        education      = bool(secs.get("education"))
+        certifications = bool(secs.get("certifications"))
+        publications   = bool(secs.get("publications"))
+
+        return [
+            ["Experience",     yn(experience)],
+            ["Projects",       yn(projects)],
+            ["Education",      yn(education)],
+            ["Skills",         yn(skills)],
+            ["Certifications", yn(certifications)],
+            ["Publications",   yn(publications)],
+            ["Summary",        yn(summary)],
+        ]
 
     story = []
     story.append(Paragraph("ATS Resume Check Report", H1))
     story.append(Paragraph(f"Score: {report.get('score', 0)} / 100", H2))
     story.append(Spacer(1, 12))
+
     comps = report.get("components", {}) or {}
-    comp_keys = ["required_coverage","overall_coverage","frequency_bonus_required","frequency_bonus_overall","section_hygiene","bullets_ratio_%","action_verb_ratio_%"]
+    comp_keys = [
+        "required_coverage", "overall_coverage",
+        "frequency_bonus_required", "frequency_bonus_overall",
+        "section_hygiene", "bullets_ratio_%", "action_verb_ratio_%"
+    ]
     story.append(Paragraph("Components", H2))
     story.append(kv_table(comps, comp_keys))
     story.append(Spacer(1, 12))
@@ -265,7 +341,9 @@ def build_pdf(report: dict) -> bytes:
     def bullets(title: str, items: list[str]):
         story.append(Paragraph(title, H3))
         if not items:
-            story.append(Paragraph("None", P)); story.append(Spacer(1,6)); return
+            story.append(Paragraph("None", P))
+            story.append(Spacer(1, 6))
+            return
         for it in items:
             story.append(Paragraph(f"- {it}", P))
         story.append(Spacer(1, 6))
@@ -276,17 +354,16 @@ def build_pdf(report: dict) -> bytes:
     bullets("Missing (Preferred)", report.get("preferred_missing") or [])
     bullets("Suggestions", report.get("suggested_bullets") or [])
 
-    from reportlab.platypus import Table
+    # Section Presence (canonicalized, no duplicate alias rows)
     secs = report.get("section_presence", {}) or {}
     if secs:
-        rows = [["Section","Present?"]] + [[k.title(), "Yes" if v else "No"] for k,v in secs.items()]
+        rows = [["Section", "Present?"]] + _canonical_section_rows(secs)
         t = Table(rows, colWidths=[260, 260])
-        from reportlab.platypus import TableStyle
         t.setStyle(TableStyle([
-            ("BACKGROUND",(0,0),(-1,0), colors.HexColor("#0f172a")),
-            ("TEXTCOLOR",(0,0),(-1,0), colors.whitesmoke),
-            ("INNERGRID",(0,0),(-1,-1), 0.25, colors.grey),
-            ("BOX",(0,0),(-1,-1), 0.5, colors.grey),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+            ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.grey),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.grey),
         ]))
         story.append(Paragraph("Section Presence", H2))
         story.append(t)

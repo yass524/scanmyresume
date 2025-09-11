@@ -3,6 +3,34 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Tuple, DefaultDict
 from collections import defaultdict
+# ---- Section canonicalization (keep one truth for each family) ----
+_SECTION_FAMILIES = {
+    "experience": {"experience", "work experience", "professional experience"},
+    "skills": {"skills", "skills & tools", "tech stack"},
+    "summary": {"summary", "professional summary", "objective", "profile", "profile summary"},
+    # singletons not needed here: "projects", "education", etc.
+}
+
+def _canonicalize_sections(sp: Dict[str, bool]) -> Dict[str, bool]:
+    sp = dict(sp or {})
+    out: Dict[str, bool] = {}
+
+    # families: set canonical True if ANY alias is True
+    for canon, aliases in _SECTION_FAMILIES.items():
+        out[canon] = any(sp.get(a, False) for a in aliases)
+
+    # pass through common singletons (don’t mark missing; just reflect whatever the splitter found)
+    for k in ("projects", "education", "certifications", "publications"):
+        out[k] = bool(sp.get(k, False))
+
+    # keep originals too (optional): mirror the canonical truth so they don’t show as “No”
+    # (This prevents “work experience: No” when “experience: Yes”.)
+    for canon, aliases in _SECTION_FAMILIES.items():
+        v = out[canon]
+        for a in aliases:
+            out[a] = v
+
+    return out
 
 # Canonical section keys used everywhere
 SECTION_CANONICAL = (
@@ -262,3 +290,5 @@ def is_header_line(line: str) -> bool:
     if any(rx.match(s) for rx in _HEADER_START_RE.values()):
         return True
     return bool(_HEADER_SHAPE.match(line.strip()))
+def canonicalize_sections(sp: Dict[str, bool]) -> Dict[str, bool]:
+    return _canonicalize_sections(sp)

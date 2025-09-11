@@ -1,0 +1,107 @@
+{
+  "score": 23.3,
+  "components": {
+    "required_coverage": 16.7,
+    "overall_coverage": 16.7,
+    "frequency_bonus_required": 22.5,
+    "frequency_bonus_overall": 15.0,
+    "section_hygiene": 75.0,
+    "bullets_ratio_%": 45.8,
+    "action_verb_ratio_%": 18.2,
+    "length_penalty_applied": false,
+    "stuffing_penalty_applied": false,
+    "ai_on": false,
+    "ai_semantic_matches": 0
+  },
+  "matched_keywords": [
+    "solidworks"
+  ],
+  "missing_keywords": [
+    "c",
+    "plc",
+    "python",
+    "schneider electric",
+    "simulink"
+  ],
+  "required_missing": [
+    "c",
+    "plc",
+    "python",
+    "schneider electric",
+    "simulink"
+  ],
+  "preferred_missing": [],
+  "gaps_by_category": {
+    "programming": [
+      "c",
+      "python",
+      "simulink"
+    ],
+    "controls_automation": [
+      "plc",
+      "schneider electric"
+    ]
+  },
+  "suggested_bullets": [
+    "Add a concrete achievement using 'c' (e.g., “Implemented c to improve a KPI by X%”).",
+    "Add a concrete achievement using 'plc' (e.g., “Implemented plc to improve a KPI by X%”).",
+    "Add a concrete achievement using 'python' (e.g., “Implemented python to improve a KPI by X%”).",
+    "Add a concrete achievement using 'schneider electric' (e.g., “Implemented schneider electric to improve a KPI by X%”).",
+    "Add a concrete achievement using 'simulink' (e.g., “Implemented simulink to improve a KPI by X%”).",
+    "Tailor keywords to the job description (mirror terminology where appropriate).",
+    "Balance soft skills with evidence (teamwork, leadership) tied to measurable results."
+  ],
+  "avg_sentence_length": 5.8,
+  "section_presence": {
+    "experience": true,
+    "skills": false,
+    "summary": true,
+    "projects": true,
+    "education": true,
+    "certifications": false,
+    "publications": false,
+    "professional experience": true,
+    "work experience": true,
+    "tech stack": false,
+    "skills & tools": false,
+    "profile": true,
+    "objective": true,
+    "profile summary": true,
+    "professional summary": true
+  },
+  "top_resume_terms": [
+    "cairo",
+    "egypt",
+    "international",
+    "digital",
+    "marketing",
+    "operations",
+    "jun",
+    "analytics",
+    "usher",
+    "german",
+    "giu",
+    "2022",
+    "communication",
+    "intern",
+    "hr",
+    "projects",
+    "24",
+    "skills",
+    "university",
+    "global"
+  ],
+  "jd_skill_terms": [
+    "c",
+    "plc",
+    "python",
+    "schneider electric",
+    "simulink",
+    "solidworks"
+  ],
+  "ai_matched_terms": [],
+  "ai_similarities": {},
+  "format_warnings": [
+    "Add standard headings: SKILLS."
+  ]
+}
