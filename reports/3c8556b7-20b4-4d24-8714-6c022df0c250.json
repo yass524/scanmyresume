@@ -1,0 +1,163 @@
+{
+  "score": 18.0,
+  "components": {
+    "required_coverage": 16.7,
+    "overall_coverage": 11.8,
+    "frequency_bonus_required": 40.0,
+    "frequency_bonus_overall": 26.7,
+    "section_hygiene": 0.0,
+    "bullets_ratio_%": 0.0,
+    "action_verb_ratio_%": 0.0,
+    "length_penalty_applied": false,
+    "stuffing_penalty_applied": false,
+    "ai_on": false,
+    "ai_semantic_matches": 0
+  },
+  "matched_keywords": [
+    "plc",
+    "schneider electric"
+  ],
+  "missing_keywords": [
+    "allen-bradley",
+    "beckhoff",
+    "cmms",
+    "ethernet/ip",
+    "instrumentation",
+    "modbus",
+    "mqtt",
+    "node",
+    "opc ua",
+    "profinet",
+    "rca",
+    "sap",
+    "scada",
+    "servo",
+    "siemens s7"
+  ],
+  "required_missing": [
+    "allen-bradley",
+    "ethernet/ip",
+    "instrumentation",
+    "modbus",
+    "opc ua",
+    "profinet",
+    "rca",
+    "scada",
+    "servo",
+    "siemens s7"
+  ],
+  "preferred_missing": [
+    "beckhoff",
+    "cmms",
+    "mqtt",
+    "node",
+    "sap",
+    "servo"
+  ],
+  "gaps_by_category": {
+    "controls_automation": [
+      "allen-bradley",
+      "ethernet/ip",
+      "instrumentation",
+      "modbus",
+      "opc ua",
+      "profinet",
+      "rca",
+      "scada",
+      "servo",
+      "siemens s7",
+      "beckhoff",
+      "cmms",
+      "mqtt",
+      "servo"
+    ],
+    "web": [
+      "node"
+    ],
+    "business_finance": [
+      "sap"
+    ]
+  },
+  "suggested_bullets": [
+    "Add a concrete achievement using 'allen-bradley' (e.g., “Implemented allen-bradley to improve a KPI by X%”).",
+    "Add a concrete achievement using 'ethernet/ip' (e.g., “Implemented ethernet/ip to improve a KPI by X%”).",
+    "Add a concrete achievement using 'instrumentation' (e.g., “Implemented instrumentation to improve a KPI by X%”).",
+    "Add a concrete achievement using 'modbus' (e.g., “Implemented modbus to improve a KPI by X%”).",
+    "Add a concrete achievement using 'opc ua' (e.g., “Implemented opc ua to improve a KPI by X%”).",
+    "Add a concrete achievement using 'profinet' (e.g., “Implemented profinet to improve a KPI by X%”).",
+    "Add a concrete achievement using 'rca' (e.g., “Implemented rca to improve a KPI by X%”).",
+    "Add a concrete achievement using 'scada' (e.g., “Implemented scada to improve a KPI by X%”).",
+    "Add an 'Experience' or 'Projects' section highlighting relevant work.",
+    "Tailor keywords to the job description (mirror terminology where appropriate).",
+    "If relevant, mention 'beckhoff' with one concise bullet or in Skills.",
+    "If relevant, mention 'cmms' with one concise bullet or in Skills.",
+    "If relevant, mention 'mqtt' with one concise bullet or in Skills.",
+    "If relevant, mention 'node' with one concise bullet or in Skills."
+  ],
+  "avg_sentence_length": 24.9,
+  "section_presence": {
+    "experience": false,
+    "skills": false,
+    "summary": true,
+    "projects": false,
+    "education": false,
+    "certifications": false,
+    "publications": false,
+    "work experience": false,
+    "professional experience": false,
+    "skills & tools": false,
+    "tech stack": false,
+    "profile summary": true,
+    "profile": true,
+    "professional summary": true,
+    "objective": true
+  },
+  "top_resume_terms": [
+    "control",
+    "electrical",
+    "sep",
+    "industrial",
+    "automation",
+    "motor",
+    "systems",
+    "engineering",
+    "intern",
+    "jul",
+    "plc",
+    "safety",
+    "complete",
+    "simulink",
+    "hands-on",
+    "experience",
+    "classic",
+    "pes",
+    "services",
+    "schneider"
+  ],
+  "jd_skill_terms": [
+    "allen-bradley",
+    "beckhoff",
+    "cmms",
+    "ethernet/ip",
+    "instrumentation",
+    "modbus",
+    "mqtt",
+    "node",
+    "opc ua",
+    "plc",
+    "profinet",
+    "rca",
+    "sap",
+    "scada",
+    "schneider electric",
+    "servo",
+    "siemens s7"
+  ],
+  "ai_matched_terms": [],
+  "ai_similarities": {},
+  "format_warnings": [
+    "Add standard headings: EXPERIENCE, SKILLS, PROJECTS, EDUCATION.",
+    "Use bullets for experience; aim for ≥25% of lines as bullets.",
+    "Start more bullets with action verbs (Built, Implemented, Optimized…)."
+  ]
+}

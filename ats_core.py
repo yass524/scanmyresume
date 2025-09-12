@@ -14,7 +14,6 @@ from ats_skills import CANON_ALIASES as _CANON_ALIASES
 from ats_sections import split_sections as _split_sections
 from ats_sections import SECTION_WEIGHTS
 from ats_sections import is_header_line as _is_header_line
-from ats_sections import canonicalize_sections as _canon_sections
 
 # Lexicon (verbs, stopwords, common regexes, markers)
 from ats_lexicon import (
@@ -499,8 +498,8 @@ def compute_score(resume_text: str, job_description: str) -> Dict:
     jt_norm = _norm(jt)
 
     # Sections (present + text), canonicalized presence for report/UI
-    sections_presence_raw, sections_text = _split_sections(rt)
-    sections_presence = _canon_sections(sections_presence_raw)
+    # Sections (present + text) — already canonical from ats_sections
+    sections_presence, sections_text = _split_sections(rt)  # pass RAW text (not normalized)
 
     # Bullet / verbs (percent scale)
     bullet_ratio_pct, verb_ratio_pct = _bullet_and_verb_metrics(rt)

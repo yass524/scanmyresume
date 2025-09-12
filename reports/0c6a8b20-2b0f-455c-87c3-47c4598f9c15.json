@@ -1,0 +1,65 @@
+{
+  "score": 80.0,
+  "components": {
+    "required_coverage": 100.0,
+    "overall_coverage": 100.0,
+    "frequency_bonus_required": 0.0,
+    "frequency_bonus_overall": 0.0,
+    "section_hygiene": 100.0,
+    "bullets_ratio_%": 0.0,
+    "action_verb_ratio_%": 0.0,
+    "length_penalty_applied": false,
+    "stuffing_penalty_applied": false,
+    "ai_on": false,
+    "ai_semantic_matches": 0
+  },
+  "matched_keywords": [],
+  "missing_keywords": [],
+  "required_missing": [],
+  "preferred_missing": [],
+  "gaps_by_category": {},
+  "suggested_bullets": [
+    "Use bullets for experience; target ≥25% of lines as bullets.",
+    "Start bullets with strong action verbs (Led, Built, Optimized, Spearheaded…).",
+    "Balance soft skills with evidence (teamwork, leadership) tied to measurable results."
+  ],
+  "avg_sentence_length": 5.9,
+  "section_presence": {
+    "summary": true,
+    "experience": true,
+    "projects": true,
+    "education": true,
+    "skills": true,
+    "certifications": true,
+    "publications": false
+  },
+  "top_resume_terms": [
+    "control",
+    "automation",
+    "sep",
+    "electrical",
+    "systems",
+    "learned",
+    "engineering",
+    "gained",
+    "industrial",
+    "motor",
+    "giu",
+    "experience",
+    "intern",
+    "jul",
+    "design",
+    "2024",
+    "plc",
+    "safety",
+    "complete",
+    "simulink"
+  ],
+  "jd_skill_terms": [],
+  "ai_matched_terms": [],
+  "ai_similarities": {},
+  "format_warnings": [
+    "Use bullets for experience; aim for ≥25% of lines as bullets.",
+    "Start more bullets with action verbs (Built, Implemented, Optimized…)."
+  ]
+}

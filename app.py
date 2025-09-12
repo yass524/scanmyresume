@@ -35,8 +35,16 @@ except Exception:
 
 try:
     from pdfminer.high_level import extract_text as pdf_extract_text
+    from pdfminer.layout import LAParams
 except ImportError:
     pdf_extract_text = None
+    LAParams = None
+
+def read_pdf_bytes(b: bytes) -> str:
+    if pdf_extract_text is None or LAParams is None:
+        raise HTTPException(500, "PDF parsing requires 'pdfminer.six'. Install it.")
+    laparams = LAParams()  # tune if needed (e.g., line_margin, word_margin)
+    return pdf_extract_text(BytesIO(b), laparams=laparams) or ""
 
 try:
     import docx  # python-docx
@@ -168,10 +176,147 @@ def read_docx_bytes(b: bytes) -> str:
     d = docx.Document(BytesIO(b))
     return "\n".join(p.text for p in d.paragraphs)
 
+# at top of app.py (or a pdf_utils.py)
+import io
+
+# Optional imports guarded (install when you can)
+try:
+    import fitz  # PyMuPDF
+except Exception:
+    fitz = None
+
+try:
+    from pdfminer.high_level import extract_text as pdfminer_extract_text
+    from pdfminer.layout import LAParams
+except Exception:
+    pdfminer_extract_text, LAParams = None, None
+
+try:
+    import pytesseract
+    from pdf2image import convert_from_bytes
+except Exception:
+    pytesseract = None
+    convert_from_bytes = None
+
+
+def _extract_pdf_text_pdfminer(b: bytes) -> str:
+    if pdfminer_extract_text is None:
+        return ""
+    laparams = LAParams()  # you can tune: line_margin, word_margin
+    try:
+        return pdfminer_extract_text(io.BytesIO(b), laparams=laparams) or ""
+    except Exception:
+        return ""
+
+
+def _extract_pdf_text_pymupdf_blocks(b: bytes) -> str:
+    """
+    Use PyMuPDF to read text blocks with coordinates and reconstruct left/right columns.
+    This is MUCH more reliable for Canva and design-tool PDFs.
+    """
+    if fitz is None:
+        return ""
+
+    try:
+        doc = fitz.open(stream=b, filetype="pdf")
+    except Exception:
+        return ""
+
+    all_pages_text = []
+
+    for page in doc:
+        # get blocks: [x0, y0, x1, y1, "text", block_no, block_type, ...]
+        # Using get_text("blocks") returns tuples; order is arbitrary → we sort.
+        blocks = page.get_text("blocks") or []
+        if not blocks:
+            continue
+
+        # Sort by x, then y for stable grouping
+        blocks_sorted = sorted(blocks, key=lambda bl: (round(bl[0], 1), round(bl[1], 1)))
+
+        # Find a rough vertical mid to split columns
+        xs = [bl[0] for bl in blocks_sorted]
+        if not xs:
+            continue
+        x_min, x_max = min(xs), max(xs)
+        mid = (x_min + x_max) / 2.0
+
+        left_blocks  = [bl for bl in blocks_sorted if bl[0] < mid]
+        right_blocks = [bl for bl in blocks_sorted if bl[0] >= mid]
+
+        # Within each column, sort by (y, x) reading order
+        left_blocks  = sorted(left_blocks,  key=lambda bl: (round(bl[1], 1), round(bl[0], 1)))
+        right_blocks = sorted(right_blocks, key=lambda bl: (round(bl[1], 1), round(bl[0], 1)))
+
+        def _join_blocks(col_blocks):
+            texts = []
+            for bl in col_blocks:
+                t = bl[4] if len(bl) > 4 else ""
+                if t:
+                    texts.append(t.strip())
+            # keep column separation with double newline
+            return "\n".join([t for t in texts if t])
+
+        # Important: Left column often holds headers; right is main content.
+        left_text  = _join_blocks(left_blocks)
+        right_text = _join_blocks(right_blocks)
+
+        page_text = ""
+        if left_text.strip():
+            page_text += left_text.strip() + "\n"
+        if right_text.strip():
+            page_text += right_text.strip()
+        if page_text.strip():
+            all_pages_text.append(page_text)
+
+    return "\n\n".join(all_pages_text).strip()
+
+
+def _extract_pdf_text_ocr(b: bytes) -> str:
+    """
+    OCR fallback for image-only PDFs.
+    Requires: pytesseract, pdf2image + poppler (system)
+    """
+    if pytesseract is None or convert_from_bytes is None:
+        return ""
+
+    try:
+        images = convert_from_bytes(b, dpi=300)
+    except Exception:
+        return ""
+
+    ocr_texts = []
+    for img in images:
+        try:
+            txt = pytesseract.image_to_string(img)
+        except Exception:
+            txt = ""
+        if txt:
+            ocr_texts.append(txt)
+
+    return "\n".join(ocr_texts).strip()
+
+
 def read_pdf_bytes(b: bytes) -> str:
-    if pdf_extract_text is None:
-        raise HTTPException(500, "PDF parsing requires 'pdfminer.six'. Install it.")
-    return pdf_extract_text(BytesIO(b)) or ""
+    """
+    Robust extractor that tries:
+      1) PyMuPDF blocks (layout/columns aware)
+      2) pdfminer (stream text)
+      3) OCR fallback (image-only PDFs like some Canva exports)
+    """
+    # 1) Try layout-aware first (best for Canva)
+    text = _extract_pdf_text_pymupdf_blocks(b)
+    if text and len(text.strip()) >= 20:
+        return text
+
+    # 2) Try pdfminer
+    text = _extract_pdf_text_pdfminer(b)
+    if text and len(text.strip()) >= 20:
+        return text
+
+    # 3) If still nothing useful, OCR
+    text = _extract_pdf_text_ocr(b)
+    return text or ""
 
 def decode_text_bytes(b: bytes) -> str:
     return b.decode("utf-8", errors="ignore")
