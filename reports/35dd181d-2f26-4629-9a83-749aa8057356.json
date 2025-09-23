@@ -1,0 +1,163 @@
+{
+  "score": 41.6,
+  "components": {
+    "required_coverage": 42.1,
+    "overall_coverage": 40.0,
+    "frequency_bonus_required": 14.1,
+    "frequency_bonus_overall": 9.4,
+    "section_hygiene": 100.0,
+    "bullets_ratio_%": 0.0,
+    "action_verb_ratio_%": 0.0,
+    "length_penalty_applied": false,
+    "stuffing_penalty_applied": false,
+    "ai_on": true,
+    "ai_semantic_matches": 3
+  },
+  "matched_keywords": [
+    "c",
+    "i2c",
+    "matlab",
+    "numpy",
+    "prototyping",
+    "python",
+    "simulink",
+    "solidworks"
+  ],
+  "missing_keywords": [
+    "arduino",
+    "can",
+    "docker",
+    "instrumentation",
+    "linux",
+    "pandas",
+    "pytorch",
+    "r",
+    "raspberry pi",
+    "sklearn",
+    "tensorflow",
+    "uart"
+  ],
+  "required_missing": [
+    "arduino",
+    "can",
+    "docker",
+    "linux",
+    "pandas",
+    "pytorch",
+    "r",
+    "raspberry pi",
+    "sklearn",
+    "tensorflow",
+    "uart"
+  ],
+  "preferred_missing": [
+    "instrumentation"
+  ],
+  "gaps_by_category": {
+    "embedded": [
+      "arduino",
+      "can",
+      "raspberry pi",
+      "uart"
+    ],
+    "cloud_devops": [
+      "docker",
+      "linux"
+    ],
+    "ml_ai": [
+      "pandas",
+      "pytorch",
+      "sklearn",
+      "tensorflow"
+    ],
+    "programming": [
+      "r"
+    ],
+    "controls_automation": [
+      "instrumentation"
+    ]
+  },
+  "suggested_bullets": [
+    "Add a concrete achievement using 'arduino' (e.g., “Implemented arduino to improve a KPI by X%”).",
+    "Add a concrete achievement using 'can' (e.g., “Implemented can to improve a KPI by X%”).",
+    "Add a concrete achievement using 'docker' (e.g., “Implemented docker to improve a KPI by X%”).",
+    "Add a concrete achievement using 'linux' (e.g., “Implemented linux to improve a KPI by X%”).",
+    "Add a concrete achievement using 'pandas' (e.g., “Implemented pandas to improve a KPI by X%”).",
+    "Add a concrete achievement using 'pytorch' (e.g., “Implemented pytorch to improve a KPI by X%”).",
+    "Add a concrete achievement using 'r' (e.g., “Implemented r to improve a KPI by X%”).",
+    "Add a concrete achievement using 'raspberry pi' (e.g., “Implemented raspberry pi to improve a KPI by X%”).",
+    "Tailor keywords to the job description (mirror terminology where appropriate).",
+    "If relevant, mention 'instrumentation' with one concise bullet or in Skills.",
+    "Use bullets for experience; target ≥25% of lines as bullets.",
+    "Start bullets with strong action verbs (Led, Built, Optimized, Spearheaded…).",
+    "Balance soft skills with evidence (teamwork, leadership) tied to measurable results."
+  ],
+  "avg_sentence_length": 5.9,
+  "section_presence": {
+    "summary": true,
+    "experience": true,
+    "projects": true,
+    "education": true,
+    "skills": true,
+    "certifications": true,
+    "publications": false
+  },
+  "top_resume_terms": [
+    "control",
+    "automation",
+    "sep",
+    "electrical",
+    "systems",
+    "learned",
+    "engineering",
+    "gained",
+    "industrial",
+    "motor",
+    "giu",
+    "experience",
+    "intern",
+    "jul",
+    "design",
+    "2024",
+    "plc",
+    "safety",
+    "complete",
+    "simulink"
+  ],
+  "jd_skill_terms": [
+    "arduino",
+    "c",
+    "can",
+    "docker",
+    "i2c",
+    "instrumentation",
+    "linux",
+    "matlab",
+    "numpy",
+    "pandas",
+    "prototyping",
+    "python",
+    "pytorch",
+    "r",
+    "raspberry pi",
+    "simulink",
+    "sklearn",
+    "solidworks",
+    "tensorflow",
+    "uart"
+  ],
+  "ai_matched_terms": [
+    "i2c",
+    "numpy",
+    "prototyping"
+  ],
+  "ai_similarities": {
+    "i2c": 0.512,
+    "numpy": 0.554,
+    "prototyping": 0.568
+  },
+  "format_warnings": [
+    "Use bullets for experience; aim for ≥25% of lines as bullets.",
+    "Start more bullets with action verbs (Built, Implemented, Optimized…)."
+  ]
+}
