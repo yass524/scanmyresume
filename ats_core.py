@@ -33,7 +33,7 @@ from ats_lexicon import (
 # -----------------------------
 EMB_ON: bool = os.environ.get("EMB_ON", "0") == "1"
 EMB_MODEL_NAME = os.environ.get("EMB_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-EMB_THRESH: float = float(os.environ.get("EMB_THRESH", "0.60"))
+EMB_THRESH: float = float(os.environ.get("EMB_THRESH", "0.58"))
 
 # Score weights
 W_REQUIRED_COVERAGE = 0.50
