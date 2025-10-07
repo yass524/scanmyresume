@@ -10,16 +10,18 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, func
 from sqlalchemy.orm import sessionmaker, declarative_base
 from passlib.context import CryptContext
 
-from reportlab.platypus import Table
-from reportlab.lib import colors
-from ats_core import compute_score, _maybe_load_model
+# Optional: embeddings (guarded by EMB_ON)
+try:
+    import torch  # noqa: F401
+except Exception:
+    torch = None
 
 # ---------- Optional deps (PDF, parsing) ----------
 try:
@@ -34,34 +36,51 @@ except Exception:
     _PDF_OK = False
 
 try:
-    from pdfminer.high_level import extract_text as pdf_extract_text
-    from pdfminer.layout import LAParams
-except ImportError:
-    pdf_extract_text = None
-    LAParams = None
-
-def read_pdf_bytes(b: bytes) -> str:
-    if pdf_extract_text is None or LAParams is None:
-        raise HTTPException(500, "PDF parsing requires 'pdfminer.six'. Install it.")
-    laparams = LAParams()  # tune if needed (e.g., line_margin, word_margin)
-    return pdf_extract_text(BytesIO(b), laparams=laparams) or ""
+    import fitz  # PyMuPDF
+except Exception:
+    fitz = None
 
 try:
+    from pdfminer.high_level import extract_text as pdf_extract_text
+    from pdfminer.layout import LAParams
+except Exception:
+    pdf_extract_text, LAParams = None, None
+
+try:
+    import pytesseract
+except Exception:
+    pytesseract = None
+
+try:
+    from pdf2image import convert_from_bytes as pdf2img_from_bytes
+except Exception:
+    pdf2img_from_bytes = None
+
+# DOCX (used for .docx resumes / JDs)
+try:
     import docx  # python-docx
-except ImportError:
+except Exception:
     docx = None
+
+# ---------- Local modules ----------
+from ats_core import compute_score, _maybe_load_model
 
 # ---------- Paths & config ----------
 HERE         = Path(__file__).resolve().parent
 INDEX_PATH   = HERE / "index.html"
 LOGIN_PATH   = HERE / "login.html"
 REGISTER_PATH= HERE / "register.html"
-REPORT_DIR   = HERE / "reports"
-HOME_PATH = HERE / "home.html"
-REPORT_DIR.mkdir(exist_ok=True)
+HOME_PATH    = HERE / "home.html"
+
+# Detect serverless/container (Cloud Run sets K_SERVICE and PORT)
+IS_SERVERLESS = bool(os.environ.get("K_SERVICE") or os.environ.get("PORT"))
+
+# Reports directory: default to /tmp on serverless, local folder otherwise (can override with REPORT_DIR env)
+REPORT_DIR = Path(os.environ.get("REPORT_DIR", "/tmp/reports" if IS_SERVERLESS else str(HERE / "reports")))
+REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 APP_TITLE = "ATS-like Resume Checker API"
-VERSION   = "0.3.2"
+VERSION   = "0.3.4"
 
 # Upload limits
 MAX_UPLOAD_MB = float(os.environ.get("MAX_UPLOAD_MB", "8"))
@@ -71,16 +90,25 @@ MAX_BYTES     = int(MAX_UPLOAD_MB * 1024 * 1024)
 MAX_RPM = int(os.environ.get("MAX_RPM", "120"))
 _REQ_LOG: dict[str, list[float]] = {}
 
-# Auth config (for local HTTP set COOKIE_SECURE=0)
+# Auth config
 LOGIN_ENABLED  = os.environ.get("LOGIN_ENABLED", "1") == "1"
 DEMO_USER      = os.environ.get("DEMO_USER", "demo")
 DEMO_PASS      = os.environ.get("DEMO_PASS", "letmein")
 SESSION_COOKIE = "ats_session"
-COOKIE_SECURE  = bool(int(os.environ.get("COOKIE_SECURE", "0")))  # default 0 for local dev
-SESSION_SECRET = os.environ.get("SESSION_SECRET", "")             # set a strong secret in prod
 
-# DB (SQLite by default)
-DB_URL = os.environ.get("DB_URL", f"sqlite:///{HERE / 'users.db'}")
+# Cookies: default secure on serverless/https, off locally (can override with env)
+_COOKIE_SEC_DEFAULT = "1" if IS_SERVERLESS else "0"
+COOKIE_SECURE  = bool(int(os.environ.get("COOKIE_SECURE", _COOKIE_SEC_DEFAULT)))
+
+# ======= SESSION SECRET (updated: no warning) =======
+# For local dev, this provides a stable fallback so you don't see warnings.
+# For production, set an env var: SESSION_SECRET="<long-random-string>"
+SESSION_SECRET = os.environ.get("SESSION_SECRET") or "dev-secret-change-me"
+# ====================================================
+
+# DB (SQLite by default). On serverless, default to /tmp for writeable FS.
+_default_sqlite = f"sqlite:////tmp/users.db" if IS_SERVERLESS else f"sqlite:///{HERE / 'users.db'}"
+DB_URL = os.environ.get("DB_URL", _default_sqlite)
 engine = create_engine(
     DB_URL,
     connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {}
@@ -90,6 +118,7 @@ Base = declarative_base()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# ---------- DB Models ----------
 class User(Base):
     __tablename__ = "users"
     id            = Column(Integer, primary_key=True, index=True)
@@ -101,9 +130,12 @@ def hash_password(p: str) -> str:
     return pwd_context.hash(p)
 
 def verify_password(p: str, h: str) -> bool:
-    return pwd_context.verify(p, h)
+    try:
+        return pwd_context.verify(p, h)
+    except Exception:
+        return False
 
-# ---------- Models ----------
+# ---------- Pydantic ----------
 class ScoreRequest(BaseModel):
     resume_text: str
     job_description: str
@@ -136,26 +168,23 @@ app.add_middleware(
 )
 
 # ---------- Helpers ----------
-def rate_limit(request: Request) -> None:
+def rate_limit(request: Request):
     now = time.time()
-    ip = request.client.host if request and request.client else "unknown"
-    q = [t for t in _REQ_LOG.get(ip, []) if now - t < 60]
+    ip  = request.client.host if request.client else "unknown"
+    q = _REQ_LOG.get(ip, [])
+    q = [t for t in q if now - t < 60]  # drop old entries
     if len(q) >= MAX_RPM:
         raise HTTPException(429, "Too many requests, slow down.")
     q.append(now)
     _REQ_LOG[ip] = q
 
 def _make_token(username: str) -> str:
-    if not SESSION_SECRET:
-        return "ok"
     payload = (username or "user").encode("utf-8")
     sig = hmac.new(SESSION_SECRET.encode("utf-8"), payload, hashlib.sha256).hexdigest()
     data = base64.urlsafe_b64encode(payload).decode("utf-8").rstrip("=")
     return f"{data}.{sig}"
 
 def _verify_token(token: str) -> bool:
-    if not SESSION_SECRET:
-        return token == "ok"
     try:
         data, sig = token.split(".", 1)
         payload = base64.urlsafe_b64decode(data + "===")  # pad
@@ -176,421 +205,133 @@ def read_docx_bytes(b: bytes) -> str:
     d = docx.Document(BytesIO(b))
     return "\n".join(p.text for p in d.paragraphs)
 
-# at top of app.py (or a pdf_utils.py)
-import io
-
-# Optional imports guarded (install when you can)
-try:
-    import fitz  # PyMuPDF
-except Exception:
-    fitz = None
-
-try:
-    from pdfminer.high_level import extract_text as pdfminer_extract_text
-    from pdfminer.layout import LAParams
-except Exception:
-    pdfminer_extract_text, LAParams = None, None
-
-try:
-    import pytesseract
-    from pdf2image import convert_from_bytes
-except Exception:
-    pytesseract = None
-    convert_from_bytes = None
-
-
-def _extract_pdf_text_pdfminer(b: bytes) -> str:
-    if pdfminer_extract_text is None:
-        return ""
-    laparams = LAParams()  # you can tune: line_margin, word_margin
-    try:
-        return pdfminer_extract_text(io.BytesIO(b), laparams=laparams) or ""
-    except Exception:
-        return ""
-
-
-def _extract_pdf_text_pymupdf_blocks(b: bytes) -> str:
-    """
-    Use PyMuPDF to read text blocks with coordinates and reconstruct left/right columns.
-    This is MUCH more reliable for Canva and design-tool PDFs.
-    """
+def try_pymupdf_extract_text(b: bytes) -> str:
     if fitz is None:
         return ""
-
     try:
         doc = fitz.open(stream=b, filetype="pdf")
+        texts = []
+        for page in doc:
+            txt = page.get_text("text")
+            if txt:
+                texts.append(txt)
+        return "\n".join(texts).strip()
     except Exception:
         return ""
 
-    all_pages_text = []
-
-    for page in doc:
-        # get blocks: [x0, y0, x1, y1, "text", block_no, block_type, ...]
-        # Using get_text("blocks") returns tuples; order is arbitrary → we sort.
-        blocks = page.get_text("blocks") or []
-        if not blocks:
-            continue
-
-        # Sort by x, then y for stable grouping
-        blocks_sorted = sorted(blocks, key=lambda bl: (round(bl[0], 1), round(bl[1], 1)))
-
-        # Find a rough vertical mid to split columns
-        xs = [bl[0] for bl in blocks_sorted]
-        if not xs:
-            continue
-        x_min, x_max = min(xs), max(xs)
-        mid = (x_min + x_max) / 2.0
-
-        left_blocks  = [bl for bl in blocks_sorted if bl[0] < mid]
-        right_blocks = [bl for bl in blocks_sorted if bl[0] >= mid]
-
-        # Within each column, sort by (y, x) reading order
-        left_blocks  = sorted(left_blocks,  key=lambda bl: (round(bl[1], 1), round(bl[0], 1)))
-        right_blocks = sorted(right_blocks, key=lambda bl: (round(bl[1], 1), round(bl[0], 1)))
-
-        def _join_blocks(col_blocks):
-            texts = []
-            for bl in col_blocks:
-                t = bl[4] if len(bl) > 4 else ""
-                if t:
-                    texts.append(t.strip())
-            # keep column separation with double newline
-            return "\n".join([t for t in texts if t])
-
-        # Important: Left column often holds headers; right is main content.
-        left_text  = _join_blocks(left_blocks)
-        right_text = _join_blocks(right_blocks)
-
-        page_text = ""
-        if left_text.strip():
-            page_text += left_text.strip() + "\n"
-        if right_text.strip():
-            page_text += right_text.strip()
-        if page_text.strip():
-            all_pages_text.append(page_text)
-
-    return "\n\n".join(all_pages_text).strip()
-
-
-def _extract_pdf_text_ocr(b: bytes) -> str:
-    """
-    OCR fallback for image-only PDFs.
-    Requires: pytesseract, pdf2image + poppler (system)
-    """
-    if pytesseract is None or convert_from_bytes is None:
+def try_pdfminer_extract_text(b: bytes) -> str:
+    if pdf_extract_text is None:
         return ""
-
     try:
-        images = convert_from_bytes(b, dpi=300)
+        laparams = LAParams()
+        return pdf_extract_text(BytesIO(b), laparams=laparams) or ""
     except Exception:
         return ""
 
-    ocr_texts = []
-    for img in images:
-        try:
-            txt = pytesseract.image_to_string(img)
-        except Exception:
-            txt = ""
-        if txt:
-            ocr_texts.append(txt)
-
-    return "\n".join(ocr_texts).strip()
-
+def try_ocr_extract_text(b: bytes) -> str:
+    if pytesseract is None or pdf2img_from_bytes is None:
+        return ""
+    try:
+        pages = pdf2img_from_bytes(b, dpi=200)
+        txts = []
+        for img in pages:
+            txts.append(pytesseract.image_to_string(img))
+        return "\n".join(txts).strip()
+    except Exception:
+        return ""
 
 def read_pdf_bytes(b: bytes) -> str:
-    """
-    Robust extractor that tries:
-      1) PyMuPDF blocks (layout/columns aware)
-      2) pdfminer (stream text)
-      3) OCR fallback (image-only PDFs like some Canva exports)
-    """
-    # 1) Try layout-aware first (best for Canva)
-    text = _extract_pdf_text_pymupdf_blocks(b)
-    if text and len(text.strip()) >= 20:
+    # Strongest first: PyMuPDF -> pdfminer -> OCR
+    text = try_pymupdf_extract_text(b)
+    if text and text.strip():
         return text
-
-    # 2) Try pdfminer
-    text = _extract_pdf_text_pdfminer(b)
-    if text and len(text.strip()) >= 20:
+    text = try_pdfminer_extract_text(b)
+    if text and text.strip():
         return text
+    text = try_ocr_extract_text(b)
+    return text
 
-    # 3) If still nothing useful, OCR
-    text = _extract_pdf_text_ocr(b)
-    return text or ""
-
-def decode_text_bytes(b: bytes) -> str:
-    return b.decode("utf-8", errors="ignore")
-
-def docx_stats_from_bytes(b: bytes) -> dict:
-    stats = {"tables": 0, "images": 0}
-    try:
-        if docx is None:
-            return stats
-        d = docx.Document(BytesIO(b))
-        stats["tables"] = len(getattr(d, "tables", []) or [])
-        stats["images"] = len(getattr(d, "inline_shapes", []))
-    except Exception:
-        pass
-    return stats
-
-# PDF
-def _canonical_section_rows(secs: dict) -> list[list[str]]:
-    """Collapse alias families so we show each section once, cleanly."""
-    yes = lambda b: "Yes" if b else "No"
-
-    experience = bool(
-        secs.get("experience")
-        or secs.get("work experience")
-        or secs.get("professional experience")
-    )
-    skills = bool(
-        secs.get("skills")
-        or secs.get("skills & tools")
-        or secs.get("tech stack")
-    )
-    summary = bool(
-        secs.get("summary")
-        or secs.get("professional summary")
-        or secs.get("profile")
-        or secs.get("profile summary")
-        or secs.get("objective")
-    )
-    projects = bool(secs.get("projects"))
-    education = bool(secs.get("education"))
-    certifications = bool(secs.get("certifications"))
-    publications = bool(secs.get("publications"))
-
-    # Only canonical rows; aliases are intentionally omitted.
-    rows = [
-        ["Experience",     yes(experience)],
-        ["Projects",       yes(projects)],
-        ["Education",      yes(education)],
-        ["Skills",         yes(skills)],
-        ["Certifications", yes(certifications)],
-        ["Publications",   yes(publications)],
-        ["Summary",        yes(summary)],
-    ]
-    return rows
-
-_PDF_UNICODE = False
-_PDF_FONT_NAME = "UIUnicode"
-
-def _pdf_safe_text(s: str) -> str:
-    if not isinstance(s, str):
-        s = str(s)
-    repl = {"•": "-", "–": "-", "—": "-", "’": "'", "‘": "'", "“": '"', "”": '"', "…": "...", "≥": ">=", "≤": "<=", "×": "x",
-            "™": "(TM)", "©": "(C)", "®": "(R)", "→": "->", "←": "<-"}
+def sanitize_unicode(s: str) -> str:
+    if not s:
+        return s
+    repl = {
+        "’": "'", "‘": "'", "“": '"', "”": '"', "…": "...", "≥": ">=", "≤": "<=", "×": "x",
+        "\u00a0": " ", "\u200b": "", "\uf0b7": "-", "\uf0a7": "-", "\uf02d": "-",
+    }
     for k, v in repl.items():
         s = s.replace(k, v)
-    return s.encode("latin-1", "ignore").decode("latin-1", "ignore")
+    return s
 
-def _pdf_text(s: str) -> str:
-    return s if _PDF_UNICODE else _pdf_safe_text(s)
+def ensure_size(b: bytes):
+    if len(b) > MAX_BYTES:
+        raise HTTPException(413, f"File too large (>{MAX_UPLOAD_MB} MB).")
 
-def _ensure_pdf_font():
-    global _PDF_UNICODE
-    if not _PDF_OK or _PDF_UNICODE:
-        return
-    try_paths = []
-    if os.name == "nt":
-        try_paths += [r"C:\Windows\Fonts\arial.ttf", r"C:\Windows\Fonts\Arial.ttf", r"C:\Windows\Fonts\Calibri.ttf"]
-    else:
-        try_paths += ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]
-    for fp in try_paths:
-        if os.path.exists(fp):
-            try:
-                pdfmetrics.registerFont(TTFont(_PDF_FONT_NAME, fp))
-                _PDF_UNICODE = True
-                break
-            except Exception:
-                continue
+def docx_stats_from_bytes(b: bytes) -> Optional[dict]:
+    if docx is None:
+        return None
+    try:
+        d = docx.Document(BytesIO(b))
+        paras = [p for p in d.paragraphs]
+        runs  = sum(len(p.runs) for p in paras)
+        words = sum(len((p.text or "").split()) for p in paras)
+        return {"paragraphs": len(paras), "runs": runs, "approx_words": words}
+    except Exception:
+        return None
 
-def build_pdf(report: dict) -> bytes:
-    if not _PDF_OK:
-        raise HTTPException(500, "PDF export requires 'reportlab'. Install it")
-    _ensure_pdf_font()
+def ext_from_filename(name: str) -> str:
+    p = name.rsplit(".", 1)
+    if len(p) == 2:
+        return p[1].lower()
+    return ""
 
-    buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, title="ATS Resume Check Report")
-    styles = getSampleStyleSheet()
-    if _PDF_UNICODE:
-        for k in ("Heading1", "Heading2", "Heading3", "BodyText"):
-            styles[k].fontName = _PDF_FONT_NAME
-    H1, H2, H3, P = styles["Heading1"], styles["Heading2"], styles["Heading3"], styles["BodyText"]
+# ---------- Static UI ----------
+@app.get("/")
+def home():
+    if HOME_PATH.exists():
+        return FileResponse(HOME_PATH)
+    return JSONResponse({"ok": True, "service": APP_TITLE, "version": VERSION})
 
-    def kv_table(d: dict, keys: list[str]):
-        rows = [["Metric", "Value"]]
-        for k in keys:
-            v = d.get(k, "")
-            rows.append([k.replace("_", " ").title(), str(v)])
-        t = Table(rows, colWidths=[200, 320])
-        t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-            ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.grey),
-            ("BOX", (0, 0), (-1, -1), 0.5, colors.grey),
-        ]))
-        return t
-
-    # collapse aliases → single canonical rows
-    def _canonical_section_rows(secs: dict) -> list[list[str]]:
-        yn = lambda b: "Yes" if b else "No"
-
-        experience = bool(
-            secs.get("experience")
-            or secs.get("work experience")
-            or secs.get("professional experience")
-        )
-        skills = bool(
-            secs.get("skills")
-            or secs.get("skills & tools")
-            or secs.get("tech stack")
-        )
-        summary = bool(
-            secs.get("summary")
-            or secs.get("professional summary")
-            or secs.get("profile")
-            or secs.get("profile summary")
-            or secs.get("objective")
-        )
-        projects       = bool(secs.get("projects"))
-        education      = bool(secs.get("education"))
-        certifications = bool(secs.get("certifications"))
-        publications   = bool(secs.get("publications"))
-
-        return [
-            ["Experience",     yn(experience)],
-            ["Projects",       yn(projects)],
-            ["Education",      yn(education)],
-            ["Skills",         yn(skills)],
-            ["Certifications", yn(certifications)],
-            ["Publications",   yn(publications)],
-            ["Summary",        yn(summary)],
-        ]
-
-    story = []
-    story.append(Paragraph("ATS Resume Check Report", H1))
-    story.append(Paragraph(f"Score: {report.get('score', 0)} / 100", H2))
-    story.append(Spacer(1, 12))
-
-    comps = report.get("components", {}) or {}
-    comp_keys = [
-        "required_coverage", "overall_coverage",
-        "frequency_bonus_required", "frequency_bonus_overall",
-        "section_hygiene", "bullets_ratio_%", "action_verb_ratio_%"
-    ]
-    story.append(Paragraph("Components", H2))
-    story.append(kv_table(comps, comp_keys))
-    story.append(Spacer(1, 12))
-
-    def bullets(title: str, items: list[str]):
-        story.append(Paragraph(title, H3))
-        if not items:
-            story.append(Paragraph("None", P))
-            story.append(Spacer(1, 6))
-            return
-        for it in items:
-            story.append(Paragraph(f"- {it}", P))
-        story.append(Spacer(1, 6))
-
-    story.append(Spacer(1, 6))
-    bullets("Matched Keywords", report.get("matched_keywords") or [])
-    bullets("Missing (Required)", report.get("required_missing") or [])
-    bullets("Missing (Preferred)", report.get("preferred_missing") or [])
-    bullets("Suggestions", report.get("suggested_bullets") or [])
-
-    # Section Presence (canonicalized, no duplicate alias rows)
-    secs = report.get("section_presence", {}) or {}
-    if secs:
-        rows = [["Section", "Present?"]] + _canonical_section_rows(secs)
-        t = Table(rows, colWidths=[260, 260])
-        t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-            ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.grey),
-            ("BOX", (0, 0), (-1, -1), 0.5, colors.grey),
-        ]))
-        story.append(Paragraph("Section Presence", H2))
-        story.append(t)
-        story.append(Spacer(1, 12))
-
-    warns = report.get("format_warnings") or []
-    if warns:
-        bullets("Parser-Friendliness Tips", warns)
-
-    doc.build(story)
-    pdf = buf.getvalue()
-    buf.close()
-    return pdf
-
-def build_warnings(report: dict, *, ext: Optional[str], r_bytes: Optional[bytes], docx_stats: Optional[dict]) -> list[str]:
-    w: list[str] = []
-    comp = report.get("components", {}) or {}
-    secs = report.get("section_presence", {}) or {}
-    need = ["experience", "skills", "projects", "education"]
-    missing_secs = [s for s in need if not secs.get(s, False)]
-    if missing_secs:
-        w.append("Add standard headings: " + ", ".join(s.upper() for s in missing_secs) + ".")
-    if comp.get("bullets_ratio_%", 0) < 25:
-        w.append("Use bullets for experience; aim for ≥25% of lines as bullets.")
-    if comp.get("action_verb_ratio_%", 0) < 15:
-        w.append("Start more bullets with action verbs (Built, Implemented, Optimized…).")
-    if ext == "pdf" and r_bytes is not None and not report.get("top_resume_terms"):
-        w.append("Your PDF may be image-only. Use a selectable-text PDF or DOCX, or run OCR.")
-    if ext == "docx" and docx_stats:
-        if (docx_stats.get("tables") or 0) > 0:
-            w.append("Avoid complex tables—ATS parsers may skip table content.")
-        if (docx_stats.get("images") or 0) > 0:
-            w.append("Don’t put text inside images; parsers can’t read it.")
-    return w
-
-# ---------- Routes ----------
-@app.get("/", include_in_schema=False)
-def root_redirect():
-    # If you prefer to keep it protected + JSON, delete this and keep your old root() handler.
-    return RedirectResponse(url="/home")
-
-@app.get("/home", include_in_schema=False)
-def home_page(request: Request):
-    if not HOME_PATH.exists():
-        raise HTTPException(404, "home.html not found next to app.py")
-    return FileResponse(HOME_PATH)
+@app.get("/ui")
+def index():
+    if INDEX_PATH.exists():
+        return FileResponse(INDEX_PATH)
+    return JSONResponse({"ok": True, "msg": "UI not bundled"})
 
 @app.get("/login", include_in_schema=False)
 def login_page():
-    if not LOGIN_PATH.exists():
-        raise HTTPException(404, "login.html not found next to app.py")
-    return FileResponse(LOGIN_PATH)
+    if LOGIN_PATH.exists():
+        return FileResponse(LOGIN_PATH)
+    return RedirectResponse(url="/ui", status_code=302)
 
 @app.get("/register", include_in_schema=False)
 def register_page():
-    if not REGISTER_PATH.exists():
-        raise HTTPException(404, "register.html not found next to app.py")
-    return FileResponse(REGISTER_PATH)
+    if REGISTER_PATH.exists():
+        return FileResponse(REGISTER_PATH)
+    return RedirectResponse(url="/ui", status_code=302)
 
+# ---------- Auth ----------
 @app.post("/auth/register")
-async def auth_register(username: str = Form(...), password: str = Form(...)):
+def auth_register(username: str = Form(...), password: str = Form(...)):
     if not LOGIN_ENABLED:
-        raise HTTPException(400, "Registration disabled in this environment.")
-    u = username.strip().lower()
-    if not (3 <= len(u) <= 32):
-        raise HTTPException(400, "Username must be 3–32 characters.")
-    if not all(ch.isalnum() or ch in "._" for ch in u):
-        raise HTTPException(400, "Username may contain letters, numbers, dot, underscore.")
-    if len(password) < 8:
-        raise HTTPException(400, "Password must be at least 8 characters.")
+        raise HTTPException(400, "Registration disabled")
+    u = (username or "").strip().lower()
+    p = (password or "").strip()
+    if not u or not p:
+        raise HTTPException(400, "Username and password required")
     db = SessionLocal()
     try:
-        if db.query(User).filter_by(username=u).first():
-            raise HTTPException(400, "Username already exists.")
-        db.add(User(username=u, password_hash=hash_password(password)))
+        existing = db.query(User).filter_by(username=u).first()
+        if existing:
+            raise HTTPException(409, "Username already exists")
+        user = User(username=u, password_hash=hash_password(p))
+        db.add(user)
         db.commit()
-        return {"ok": True, "message": "Account created. You can sign in now."}
+        return {"ok": True}
     finally:
         db.close()
 
 @app.post("/auth/login")
-async def auth_login(response: Response, username: str = Form(...), password: str = Form(...)):
+def auth_login(response: Response, username: str = Form(...), password: str = Form(...)):
     if not LOGIN_ENABLED:
         return {"ok": True, "redirect": "/ui"}
     u = username.strip().lower()
@@ -618,57 +359,44 @@ def auth_logout():
     return resp
 
 @app.get("/health", include_in_schema=False)
-def health(request: Request):
-    if not is_authed(request):
-        raise HTTPException(401, "Login required")
+def health():
     return {"ok": True, "version": VERSION}
 
-@app.get("/config", include_in_schema=False)
-def config(request: Request):
-    if not is_authed(request):
-        raise HTTPException(401, "Login required")
-    return {"version": VERSION, "max_upload_mb": MAX_UPLOAD_MB, "max_rpm": MAX_RPM}
-
-
-
-@app.get("/ui", include_in_schema=False)
-def ui(request: Request):
-    if not is_authed(request):
-        return RedirectResponse(url="/login")
-    if not INDEX_PATH.exists():
-        raise HTTPException(404, "index.html not found next to app.py")  # <- was ats_app.py
-    return FileResponse(INDEX_PATH)
-
-# Reports (open for sharing)
+# ---------- Reports ----------
 @app.get("/r/{rid}")
 def get_report(rid: str):
     p = REPORT_DIR / f"{rid}.json"
     if not p.exists():
         raise HTTPException(404, "Report not found")
-    data = json.loads(p.read_text("utf-8"))
-    data.setdefault("id", rid)
-    data.setdefault("share_url", f"/r/{rid}")
-    return JSONResponse(data)
+    return FileResponse(p, media_type="application/json")
 
-@app.get("/report/{rid}.pdf")
-def report_pdf(rid: str):
-    p = REPORT_DIR / f"{rid}.json"
-    if not p.exists():
-        raise HTTPException(404, "Report not found")
-    report = json.loads(p.read_text("utf-8"))
-    pdf_bytes = build_pdf(report)
-    filename = f"ats_report_{rid}.pdf"
-    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
-    return StreamingResponse(BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
+# ---------- Score helpers ----------
+def build_warnings(report: dict, ext: str, r_bytes: bytes, docx_stats: Optional[dict]) -> list[str]:
+    warns = []
+    if ext == "pdf":
+        warns.append("PDF detected. If text extraction seems incomplete, try saving as DOCX.")
+    if docx_stats and docx_stats.get("approx_words", 0) > 1200:
+        warns.append("Resume looks quite long; consider trimming to ~1 page (early career) or 2 pages (experienced).")
+    if not report.get("action_verbs"):
+        warns.append("Consider adding more strong action verbs (led, built, optimized, automated, …).")
+    if report.get("contact_warnings"):
+        warns.extend(report["contact_warnings"])
+    return warns
 
-# ---------- Scoring ----------
-@app.post("/score")
-def score(req: ScoreRequest, request: Request):
+# ---------- Endpoints ----------
+@app.post("/score-text")
+def score_text(request: Request, payload: ScoreRequest):
     if not is_authed(request):
         raise HTTPException(401, "Login required")
     rate_limit(request)
-    report = compute_score(req.resume_text, req.job_description)
-    report["format_warnings"] = build_warnings(report, ext=None, r_bytes=None, docx_stats=None)
+    resume_text = sanitize_unicode((payload.resume_text or "").strip())
+    jd_text     = sanitize_unicode((payload.job_description or "").strip())
+    if not jd_text:
+        raise HTTPException(400, "job_description is required.")
+    if not resume_text:
+        raise HTTPException(400, "resume_text is empty.")
+    report = compute_score(resume_text, jd_text)
+    report["format_warnings"] = build_warnings(report, ext="txt", r_bytes=b"", docx_stats=None)
     rid = str(uuid.uuid4())
     (REPORT_DIR / f"{rid}.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), "utf-8")
     report["id"] = rid
@@ -687,35 +415,51 @@ async def score_file(
     rate_limit(request)
 
     r_bytes = await resume.read()
-    if len(r_bytes) > MAX_BYTES:
-        raise HTTPException(413, f"Resume file too large (>{MAX_UPLOAD_MB} MB).")
+    if len(r_bytes) == 0:
+        raise HTTPException(400, "Empty resume file.")
+    ensure_size(r_bytes)
+    r_name  = resume.filename or "resume"
+    r_ext   = ext_from_filename(r_name)
 
-    r_ext = (resume.filename or "").lower().split(".")[-1]
+    # JD source
+    if job_description is not None:
+        jd_bytes = await job_description.read()
+        ensure_size(jd_bytes)
+        jd_ext = ext_from_filename(job_description.filename or "jd")
+        if jd_ext == "pdf":
+            jd_text2 = read_pdf_bytes(jd_bytes)
+        elif jd_ext == "docx":
+            jd_text2 = read_docx_bytes(jd_bytes)
+        else:
+            try:
+                jd_text2 = jd_bytes.decode("utf-8", errors="ignore")
+            except Exception:
+                jd_text2 = ""
+    else:
+        jd_text2 = jd_text or ""
+
+    jd_text2 = sanitize_unicode((jd_text2 or "").strip())
+
+    # Resume text
+    resume_text = ""
     if r_ext == "pdf":
         resume_text = read_pdf_bytes(r_bytes)
     elif r_ext == "docx":
         resume_text = read_docx_bytes(r_bytes)
     else:
-        resume_text = decode_text_bytes(r_bytes)
+        try:
+            resume_text = r_bytes.decode("utf-8", errors="ignore")
+        except Exception:
+            resume_text = ""
 
-    if job_description is not None:
-        jd_bytes = await job_description.read()
-        if len(jd_bytes) > MAX_BYTES:
-            raise HTTPException(413, f"Job description file too large (>{MAX_UPLOAD_MB} MB).")
-        jd_ext = (job_description.filename or "").lower().split(".")[-1]
-        if jd_ext == "pdf":
-            jd_text = read_pdf_bytes(jd_bytes)
-        elif jd_ext == "docx":
-            jd_text = read_docx_bytes(jd_bytes)
-        else:
-            jd_text = decode_text_bytes(jd_bytes)
+    resume_text = sanitize_unicode((resume_text or "").strip())
 
-    if not jd_text or not jd_text.strip():
+    if not jd_text2 or not jd_text2.strip():
         raise HTTPException(400, "Provide job_description file or jd_text.")
     if not resume_text.strip():
         raise HTTPException(400, "No text found in resume. If it’s a scanned PDF, convert to DOCX or use OCR.")
 
-    report = compute_score(resume_text, jd_text)
+    report = compute_score(resume_text, jd_text2)
     docx_meta = docx_stats_from_bytes(r_bytes) if r_ext == "docx" else None
     report["format_warnings"] = build_warnings(report, ext=r_ext, r_bytes=r_bytes, docx_stats=docx_meta)
 
