@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 import time
+import secrets
 import hmac, hashlib, base64
 from io import BytesIO
 from pathlib import Path
@@ -92,8 +93,11 @@ _REQ_LOG: dict[str, list[float]] = {}
 
 # Auth config
 LOGIN_ENABLED  = os.environ.get("LOGIN_ENABLED", "1") == "1"
-DEMO_USER      = os.environ.get("DEMO_USER", "demo")
-DEMO_PASS      = os.environ.get("DEMO_PASS", "letmein")
+DEMO_USER_RAW  = os.environ.get("DEMO_USER")
+DEMO_PASS_RAW  = os.environ.get("DEMO_PASS")
+DEMO_USER      = DEMO_USER_RAW.strip().lower() if isinstance(DEMO_USER_RAW, str) else None
+DEMO_PASS      = DEMO_PASS_RAW.strip() if isinstance(DEMO_PASS_RAW, str) else None
+DEMO_DEMO_ENABLED = bool(DEMO_USER and DEMO_PASS)
 SESSION_COOKIE = "ats_session"
 
 # Cookies: default secure on serverless/https, off locally (can override with env)
@@ -101,9 +105,13 @@ _COOKIE_SEC_DEFAULT = "1" if IS_SERVERLESS else "0"
 COOKIE_SECURE  = bool(int(os.environ.get("COOKIE_SECURE", _COOKIE_SEC_DEFAULT)))
 
 # ======= SESSION SECRET (updated: no warning) =======
-# For local dev, this provides a stable fallback so you don't see warnings.
-# For production, set an env var: SESSION_SECRET="<long-random-string>"
-SESSION_SECRET = os.environ.get("SESSION_SECRET") or "dev-secret-change-me"
+# Production requires SESSION_SECRET; local dev will auto-generate a per-run secret.
+_session_secret_env = os.environ.get("SESSION_SECRET")
+if not _session_secret_env:
+    if IS_SERVERLESS:
+        raise RuntimeError("SESSION_SECRET env var required when running in serverless/production mode.")
+    _session_secret_env = secrets.token_urlsafe(32)
+SESSION_SECRET = _session_secret_env
 # ====================================================
 
 # DB (SQLite by default). On serverless, default to /tmp for writeable FS.
@@ -343,7 +351,7 @@ def auth_login(response: Response, username: str = Form(...), password: str = Fo
     ok = False
     if user and verify_password(password, user.password_hash):
         ok = True
-    elif u == DEMO_USER and password == DEMO_PASS:
+    elif DEMO_DEMO_ENABLED and u == DEMO_USER and password == DEMO_PASS:
         ok = True
     if not ok:
         raise HTTPException(401, "Invalid credentials")
@@ -402,6 +410,13 @@ def score_text(request: Request, payload: ScoreRequest):
     report["id"] = rid
     report["share_url"] = f"/r/{rid}"
     return report
+
+@app.post("/score", include_in_schema=False)
+def score_legacy(request: Request, payload: ScoreRequest):
+    """
+    Backwards-compatible alias used by older front-end bundles.
+    """
+    return score_text(request, payload)
 
 @app.post("/score-file")
 async def score_file(

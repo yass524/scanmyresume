@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.coverage
+.pytest_cache/
+reports/
+report.json
+users.db
+
