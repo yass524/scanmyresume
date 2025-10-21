@@ -2,7 +2,9 @@ fastapi==0.112.2
 uvicorn[standard]==0.30.6
 python-multipart>=0.0.9
 SQLAlchemy>=2.0.31
+bcrypt==4.0.1
 passlib[bcrypt]>=1.7.4
+
 pytest>=8.3.0
 
 # File parsing
@@ -18,3 +20,5 @@ sentence-transformers>=2.2.2
 # (Currently optional in your codebase)
 scikit-learn>=1.4.0
 spacy>=3.7.0
+psycopg[binary]>=3.2
+

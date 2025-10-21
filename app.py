@@ -115,7 +115,12 @@ SESSION_SECRET = _session_secret_env
 # ====================================================
 
 # DB (SQLite by default). On serverless, default to /tmp for writeable FS.
-_default_sqlite = f"sqlite:////tmp/users.db" if IS_SERVERLESS else f"sqlite:///{HERE / 'users.db'}"
+# Ensure Windows paths are valid SQLite URLs by using forward slashes.
+if IS_SERVERLESS:
+    _default_sqlite = "sqlite:////tmp/users.db"
+else:
+    _db_path = (HERE / "users.db").resolve()
+    _default_sqlite = f"sqlite:///{_db_path.as_posix()}"
 DB_URL = os.environ.get("DB_URL", _default_sqlite)
 engine = create_engine(
     DB_URL,
@@ -300,7 +305,10 @@ def home():
     return JSONResponse({"ok": True, "service": APP_TITLE, "version": VERSION})
 
 @app.get("/ui")
-def index():
+def index(request: Request):
+    if LOGIN_ENABLED and not is_authed(request):
+        # Redirect to login with message and next param
+        return RedirectResponse(url="/login?next=%2Fui&msg=Please%20log%20in%20to%20continue", status_code=302)
     if INDEX_PATH.exists():
         return FileResponse(INDEX_PATH)
     return JSONResponse({"ok": True, "msg": "UI not bundled"})
@@ -350,8 +358,6 @@ def auth_login(response: Response, username: str = Form(...), password: str = Fo
         db.close()
     ok = False
     if user and verify_password(password, user.password_hash):
-        ok = True
-    elif DEMO_DEMO_ENABLED and u == DEMO_USER and password == DEMO_PASS:
         ok = True
     if not ok:
         raise HTTPException(401, "Invalid credentials")
