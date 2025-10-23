@@ -357,6 +357,36 @@ def _passive_voice_ratio(text: str) -> float:
     toks = _tokenize(text)
     return len(matches) / max(1, len(toks))
 
+_SMALL_WORDS = {"and", "or", "for", "to", "of", "the", "in", "on", "with"}
+
+def _display_keyword(name: str) -> str:
+    if not name:
+        return name
+    if re.search(r"[A-Z]", name):
+        return name
+    if any(ch.isdigit() for ch in name) or any(ch in name for ch in "/#+._-"):
+        return name.upper()
+    words = []
+    for w in name.split():
+        words.append(w if w in _SMALL_WORDS else w.capitalize())
+    return " ".join(words)
+
+def _keyword_required_tip(keyword: str) -> str:
+    label = _display_keyword(keyword)
+    category = _CANON_CATEGORY.get(keyword)
+    if category == "programming":
+        return f"Add an impact bullet showing how you used {label} (e.g., “Built a project in {label} that improved a KPI by X%.”)"
+    if category in {"ml_ai", "data_eng"}:
+        return f"Highlight a measurable result achieved with {label} (e.g., “Applied {label} to boost a KPI by X%.”)"
+    return f"Add a concrete achievement featuring {label} (e.g., “Leveraged {label} to improve a KPI by X%.”)"
+
+def _keyword_optional_tip(keyword: str) -> str:
+    label = _display_keyword(keyword)
+    category = _CANON_CATEGORY.get(keyword)
+    if category == "programming":
+        return f"If relevant, mention {label} in a project bullet or the Skills section."
+    return f"If relevant, mention {label} with one concise bullet or in Skills."
+
 from time import localtime
 
 def _suggestions(
@@ -404,9 +434,9 @@ def _suggestions(
 
     # 1) Hard requirements & preferences
     for m in req_missing[:8]:
-        S.append((0, f"Add a concrete achievement using '{m}' (e.g., “Implemented {m} to improve a KPI by X%”)."))
+        S.append((0, _keyword_required_tip(m)))
     for m in pref_missing[:5]:
-        S.append((2, f"If relevant, mention '{m}' with one concise bullet or in Skills."))
+        S.append((2, _keyword_optional_tip(m)))
 
     # 2) Evidence/impact quality
     if numeric_density < MIN_NUMERIC_DENSITY:
