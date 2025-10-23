@@ -107,7 +107,7 @@ SKILLS: Dict[str, Dict[str, Set[str]]] = {
         "uart": {"uart","serial"},
         "i2c": {"i2c"},
         "spi": {"spi"},
-        "can": {"can","can bus","canopen"},
+        "CAN": {"can bus","can-bus","canbus","canopen","controller area network"},
         "pwm": {"pwm"},
     },
 
