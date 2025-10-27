@@ -72,6 +72,7 @@ INDEX_PATH   = HERE / "index.html"
 LOGIN_PATH   = HERE / "login.html"
 REGISTER_PATH= HERE / "register.html"
 HOME_PATH    = HERE / "home.html"
+ADS_PATH     = HERE / "ads.txt"
 
 # Detect serverless/container (Cloud Run sets K_SERVICE and PORT)
 IS_SERVERLESS = bool(os.environ.get("K_SERVICE") or os.environ.get("PORT"))
@@ -571,10 +572,9 @@ async def score_file(
     report["id"] = rid
     report["share_url"] = f"/r/{rid}"
     return report
-from fastapi.responses import PlainTextResponse
 
 @app.get("/ads.txt")
 def ads_txt():
-    return PlainTextResponse(
-        "google.com, pub-8738953870753140, DIRECT, f08c47fec0942fa0"
-    )
+    if not ADS_PATH.exists():
+        raise HTTPException(404, "ads.txt file not found")
+    return FileResponse(ADS_PATH, media_type="text/plain")
