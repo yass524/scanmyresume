@@ -571,3 +571,10 @@ async def score_file(
     report["id"] = rid
     report["share_url"] = f"/r/{rid}"
     return report
+from fastapi.responses import PlainTextResponse
+
+@app.get("/ads.txt")
+def ads_txt():
+    return PlainTextResponse(
+        "google.com, pub-8738953870753140, DIRECT, f08c47fec0942fa0"
+    )
