@@ -14,11 +14,7 @@ python-docx>=0.8.11
 # PDF export
 reportlab>=4.0.0
 
-# Optional: semantic matching
-sentence-transformers>=2.2.2
-
-# (Currently optional in your codebase)
-scikit-learn>=1.4.0
-spacy>=3.7.0
+# Optional ML deps (sentence-transformers / scikit-learn / spacy) are intentionally
+# excluded from default deploy requirements to keep serverless bundle size small.
+# Add them back only for environments where semantic matching is enabled.
 psycopg[binary]>=3.2
-
