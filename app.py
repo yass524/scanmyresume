@@ -104,11 +104,12 @@ _COOKIE_SEC_DEFAULT = "1" if IS_SERVERLESS else "0"
 COOKIE_SECURE  = bool(int(os.environ.get("COOKIE_SECURE", _COOKIE_SEC_DEFAULT)))
 
 # ======= SESSION SECRET (updated: no warning) =======
-# Production requires SESSION_SECRET; local dev will auto-generate a per-run secret.
+# Prefer SESSION_SECRET from env. If missing, generate an ephemeral secret so
+# serverless startup does not crash; sessions may reset across cold starts.
 _session_secret_env = os.environ.get("SESSION_SECRET")
 if not _session_secret_env:
     if IS_SERVERLESS:
-        raise RuntimeError("SESSION_SECRET env var required when running in serverless/production mode.")
+        print("Warning: SESSION_SECRET is not set. Using ephemeral secret; set SESSION_SECRET in Vercel env.")
     _session_secret_env = secrets.token_urlsafe(32)
 SESSION_SECRET = _session_secret_env
 # ====================================================
