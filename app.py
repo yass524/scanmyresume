@@ -72,12 +72,33 @@ ADS_FALLBACK = os.environ.get(
     "google.com, pub-8220581150534873, DIRECT, f08c47fec0942fa0"
 ).strip()
 
-# Detect serverless/container (Cloud Run sets K_SERVICE and PORT)
-IS_SERVERLESS = bool(os.environ.get("K_SERVICE") or os.environ.get("PORT"))
+# Detect serverless/container runtimes (Cloud Run, Vercel, Lambda)
+IS_SERVERLESS = any(
+    os.environ.get(k)
+    for k in ("K_SERVICE", "PORT", "VERCEL", "NOW_REGION", "AWS_LAMBDA_FUNCTION_NAME")
+)
 
-# Reports directory: default to /tmp on serverless, local folder otherwise (can override with REPORT_DIR env)
-REPORT_DIR = Path(os.environ.get("REPORT_DIR", "/tmp/reports" if IS_SERVERLESS else str(HERE / "reports")))
-REPORT_DIR.mkdir(parents=True, exist_ok=True)
+def _init_report_dir() -> Path:
+    """
+    Pick a writable reports dir. On serverless, prefer /tmp.
+    Fall back to /tmp if configured/local path is not writable.
+    """
+    configured = os.environ.get("REPORT_DIR")
+    candidates = []
+    if configured:
+        candidates.append(Path(configured))
+    candidates.append(Path("/tmp/reports") if IS_SERVERLESS else (HERE / "reports"))
+    candidates.append(Path("/tmp/reports"))
+
+    for p in candidates:
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+            return p
+        except Exception:
+            continue
+    raise RuntimeError("Unable to initialize a writable REPORT_DIR.")
+
+REPORT_DIR = _init_report_dir()
 
 APP_TITLE = "ATS-like Resume Checker API"
 VERSION   = "0.3.4"
