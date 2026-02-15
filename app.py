@@ -11,18 +11,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, PlainTextResponse
 from pydantic import BaseModel
 
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, func
 from sqlalchemy.orm import sessionmaker, declarative_base
 from passlib.context import CryptContext
-
-# Optional: embeddings (guarded by EMB_ON)
-try:
-    import torch  # noqa: F401
-except Exception:
-    torch = None
 
 # ---------- Optional deps (PDF, parsing) ----------
 try:
@@ -73,6 +67,10 @@ LOGIN_PATH   = HERE / "login.html"
 REGISTER_PATH= HERE / "register.html"
 HOME_PATH    = HERE / "home.html"
 ADS_PATH     = HERE / "ads.txt"
+ADS_FALLBACK = os.environ.get(
+    "ADS_TXT_CONTENT",
+    "google.com, pub-8220581150534873, DIRECT, f08c47fec0942fa0"
+).strip()
 
 # Detect serverless/container (Cloud Run sets K_SERVICE and PORT)
 IS_SERVERLESS = bool(os.environ.get("K_SERVICE") or os.environ.get("PORT"))
@@ -575,6 +573,8 @@ async def score_file(
 
 @app.get("/ads.txt")
 def ads_txt():
-    if not ADS_PATH.exists():
-        raise HTTPException(404, "ads.txt file not found")
-    return FileResponse(ADS_PATH, media_type="text/plain")
+    if ADS_PATH.exists():
+        return FileResponse(ADS_PATH, media_type="text/plain")
+    if ADS_FALLBACK:
+        return PlainTextResponse(ADS_FALLBACK, media_type="text/plain")
+    raise HTTPException(404, "ads.txt file not found")
