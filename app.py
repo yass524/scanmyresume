@@ -368,17 +368,22 @@ def auth_register(username: str = Form(...), password: str = Form(...)):
         db.close()
 
 @app.post("/auth/login")
-def auth_login(response: Response, username: str = Form(...), password: str = Form(...)):
+def auth_login(request: Request, username: str = Form(...), password: str = Form(...)):
     if not LOGIN_ENABLED:
         return {"ok": True, "redirect": "/ui"}
-    u = username.strip().lower()
+    # If cookie session is already valid, avoid forcing a second credential check.
+    if is_authed(request):
+        return {"ok": True, "redirect": "/ui", "already_logged_in": True}
+
+    u = (username or "").strip().lower()
+    p = (password or "").strip()
     db = SessionLocal()
     try:
         user = db.query(User).filter_by(username=u).first()
     finally:
         db.close()
     ok = False
-    if user and verify_password(password, user.password_hash):
+    if user and verify_password(p, user.password_hash):
         ok = True
     if not ok:
         raise HTTPException(401, "Invalid credentials")
