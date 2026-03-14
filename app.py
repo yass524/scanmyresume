@@ -42,6 +42,7 @@ from file_utils import (
     read_pdf_bytes,
     sanitize_unicode,
 )
+from jd_quality import assess_jd_quality, validate_jd_hard
 from pdf_utils import build_pdf_from_report
 from report_utils import build_warnings
 
@@ -308,11 +309,15 @@ def score_text(request: Request, payload: ScoreRequest):
     jd_text = sanitize_unicode((payload.job_description or "").strip())
     if not jd_text:
         raise HTTPException(400, "job_description is required.")
+    validate_jd_hard(jd_text)
     if not resume_text:
         raise HTTPException(400, "resume_text is empty.")
 
     report = compute_score(resume_text, jd_text)
-    report["format_warnings"] = build_warnings(report, ext="txt", r_bytes=b"", docx_stats=None)
+    jd_warnings, jd_quality_score, jd_low_conf = assess_jd_quality(jd_text)
+    report["input_quality_score"] = jd_quality_score
+    report["low_confidence"] = jd_low_conf
+    report["format_warnings"] = build_warnings(report, ext="txt", r_bytes=b"", docx_stats=None) + jd_warnings
 
     rid = str(uuid.uuid4())
     (REPORT_DIR / f"{rid}.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), "utf-8")
@@ -364,6 +369,7 @@ async def score_file(
         jd_text2 = jd_text or ""
 
     jd_text2 = sanitize_unicode((jd_text2 or "").strip())
+    validate_jd_hard(jd_text2)
 
     resume_text = ""
     if r_ext == "pdf":
@@ -378,14 +384,15 @@ async def score_file(
 
     resume_text = sanitize_unicode((resume_text or "").strip())
 
-    if not jd_text2 or not jd_text2.strip():
-        raise HTTPException(400, "Provide job_description file or jd_text.")
     if not resume_text.strip():
         raise HTTPException(400, "No text found in resume. If it’s a scanned PDF, convert to DOCX or use OCR.")
 
     report = compute_score(resume_text, jd_text2)
+    jd_warnings, jd_quality_score, jd_low_conf = assess_jd_quality(jd_text2)
     docx_meta = docx_stats_from_bytes(r_bytes) if r_ext == "docx" else None
-    report["format_warnings"] = build_warnings(report, ext=r_ext, r_bytes=r_bytes, docx_stats=docx_meta)
+    report["input_quality_score"] = jd_quality_score
+    report["low_confidence"] = jd_low_conf
+    report["format_warnings"] = build_warnings(report, ext=r_ext, r_bytes=r_bytes, docx_stats=docx_meta) + jd_warnings
 
     rid = str(uuid.uuid4())
     (REPORT_DIR / f"{rid}.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), "utf-8")
