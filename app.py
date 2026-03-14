@@ -325,7 +325,7 @@ def home():
         return FileResponse(HOME_PATH)
     return JSONResponse({"ok": True, "service": APP_TITLE, "version": VERSION})
 
-@app.get("/ui")
+@app.get("/dashboard")
 def index(request: Request):
     if LOGIN_ENABLED and not is_authed(request):
         # Redirect to login with message and next param
@@ -338,13 +338,13 @@ def index(request: Request):
 def login_page():
     if LOGIN_PATH.exists():
         return FileResponse(LOGIN_PATH)
-    return RedirectResponse(url="/ui", status_code=302)
+    return RedirectResponse(url="/dashboard", status_code=302)
 
 @app.get("/register", include_in_schema=False)
 def register_page():
     if REGISTER_PATH.exists():
         return FileResponse(REGISTER_PATH)
-    return RedirectResponse(url="/ui", status_code=302)
+    return RedirectResponse(url="/dashboard", status_code=302)
 
 # ---------- Auth ----------
 @app.post("/auth/register")
@@ -370,10 +370,10 @@ def auth_register(username: str = Form(...), password: str = Form(...)):
 @app.post("/auth/login")
 def auth_login(request: Request, username: str = Form(...), password: str = Form(...)):
     if not LOGIN_ENABLED:
-        return {"ok": True, "redirect": "/ui"}
+        return {"ok": True, "redirect": "/dashboard"}
     # If cookie session is already valid, avoid forcing a second credential check.
     if is_authed(request):
-        return {"ok": True, "redirect": "/ui", "already_logged_in": True}
+        return {"ok": True, "redirect": "/dashboard", "already_logged_in": True}
 
     u = (username or "").strip().lower()
     p = (password or "").strip()
@@ -388,7 +388,7 @@ def auth_login(request: Request, username: str = Form(...), password: str = Form
     if not ok:
         raise HTTPException(401, "Invalid credentials")
     tok = _make_token(u)
-    resp = JSONResponse({"ok": True, "redirect": "/ui"})
+    resp = JSONResponse({"ok": True, "redirect": "/dashboard"})
     resp.set_cookie(SESSION_COOKIE, tok, httponly=True, samesite="lax", secure=COOKIE_SECURE, max_age=60*60*24*7)
     return resp
 

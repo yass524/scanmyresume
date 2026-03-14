@@ -105,7 +105,7 @@
         const json = await res.json();
         if(!res.ok) throw new Error(json?.detail || "Login failed");
         $("msg").textContent = "Success. Redirecting…";
-        setTimeout(()=> window.location.href = json.redirect || "/ui", 300);
+        setTimeout(()=> window.location.href = json.redirect || "/dashboard", 300);
       }catch(err){
         $("msg").textContent = "Invalid credentials";
       }

@@ -118,7 +118,7 @@
         </div>
       </div>
 
-      <a href="/ui"
+      <a href="/dashboard"
          class="text-sm text-slate-400 hover:text-slate-200 transition shrink-0">
         Reset
       </a>
@@ -129,6 +129,7 @@
   <h3 class="font-medium text-amber-300 mb-2">Parser-friendliness tips</h3>
   <ul id="warnList" class="list-disc list-inside text-sm text-amber-200"></ul>
 </section>
+<!-- ================= HERO INTRO ================= -->
 <section id="heroIntro"
   class="min-h-screen flex flex-col items-center justify-center text-center px-6">
 
@@ -162,6 +163,7 @@
   </div>
 
 </section>
+<!-- ================= APP SECTION ================= -->
 <main id="appSection" class="max-w-6xl mx-auto px-4 py-6 space-y-6">
 
   <!-- Inputs -->
@@ -269,9 +271,10 @@
 </section>
 
   <script>
+    // DOM helpers first for every page
     const $ = (id)=>document.getElementById(id);
 
-    // Utilities
+    //  ui Utilities
     const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     function animateIn(selector){
@@ -296,7 +299,7 @@
     }
 
 
-
+// results rendering
     let lastReport = null;
 
 
@@ -611,7 +614,7 @@ function renderExtraInsights(json){
         r.readAsArrayBuffer(file);
       });
     }
-
+// file input events
     $("resumeFile").addEventListener("change", async (e)=>{
       const f = e.target.files?.[0]; if(!f) return;
       if(isPdf(f)){ $("resume").value = "[PDF selected — will be parsed on server]"; return; }
@@ -624,7 +627,7 @@ function renderExtraInsights(json){
       $("jd").value = f.name.toLowerCase().endsWith(".txt") ? await readText(f) : await readDocx(f);
     });
 
-    // Submit
+    // main action
     $("checkBtn").onclick = async ()=>{
       const resumeFile = $("resumeFile").files[0];
       const jdFile     = $("jdFile").files[0];
