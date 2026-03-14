@@ -220,7 +220,7 @@ def auth_forgot_password(request: Request, email: str = Form(...)):
     )
     sent = send_email(addr, "Reset your ATS account password", body)
     if not sent:
-        print("Password reset link (SMTP not configured):", reset_link)
+        print("Password reset email was not delivered. Reset link for debugging:", reset_link)
 
     return generic
 
