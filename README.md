@@ -51,7 +51,4 @@ Open `ats_core.py` and extend `SKILL_TAXONOMY` + `SYNONYMS`. The more complete t
 - Multi-language support
 - Simple web UI in React (dropzone + results dashboard)
 
-## 💰 Monetization Ideas
-- $5–10 per check (Stripe)
-- $15–20/month unlimited checks
-- White-label to career coaches or university career centers
+
