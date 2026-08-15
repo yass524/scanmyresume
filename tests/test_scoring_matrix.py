@@ -5,9 +5,10 @@ def load_core(emb_on: bool = False) -> types.ModuleType:
     os.environ["EMB_ON"] = "1" if emb_on else "0"
     if emb_on:
         os.environ.setdefault("EMB_THRESH", "0.60")
-    if "ats_core" in sys.modules:
-        del sys.modules["ats_core"]
-    return importlib.import_module("ats_core")
+    module_name = "scanmyresume.ats.core"
+    if module_name in sys.modules:
+        del sys.modules[module_name]
+    return importlib.import_module(module_name)
 
 @pytest.fixture
 def resume_strong():
@@ -75,7 +76,10 @@ def test_stuffing_penalty_triggers():
     assert out["components"]["stuffing_penalty_applied"] is True
     assert out["score"] <= 60.0
 
-@pytest.mark.skipif(importlib.util.find_spec("sentence_transformers") is None, reason="semantics off")
+@pytest.mark.skipif(
+    os.environ.get("RUN_EMBEDDING_TESTS") != "1",
+    reason="set RUN_EMBEDDING_TESTS=1 with a downloaded SentenceTransformer model",
+)
 def test_semantic_credit_controls():
     core = load_core(True)
     jd = """

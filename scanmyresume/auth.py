@@ -5,7 +5,7 @@ import time
 
 from fastapi import HTTPException, Request
 
-from config import LOGIN_ENABLED, MAX_RPM, SESSION_COOKIE, SESSION_SECRET
+from scanmyresume.config import LOGIN_ENABLED, MAX_RPM, SESSION_COOKIE, SESSION_SECRET
 
 _REQ_LOG: dict[str, list[float]] = {}
 

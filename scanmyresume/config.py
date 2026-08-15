@@ -2,14 +2,25 @@ import os
 import secrets
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-INDEX_PATH = HERE / "index.html"
-LOGIN_PATH = HERE / "login.html"
-REGISTER_PATH = HERE / "register.html"
-FORGOT_PASSWORD_PATH = HERE / "forgot_password.html"
-RESET_PASSWORD_PATH = HERE / "reset_password.html"
-HOME_PATH = HERE / "home.html"
-ADS_PATH = HERE / "ads.txt"
+try:
+    from dotenv import load_dotenv
+except ImportError:  # Keeps local tooling usable before dependencies are installed.
+    load_dotenv = None
+
+PACKAGE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = PACKAGE_DIR.parent
+WEB_DIR = PROJECT_ROOT / "web"
+HERE = PROJECT_ROOT  # Backwards-compatible alias for local runtime data paths.
+if load_dotenv is not None:
+    load_dotenv(PROJECT_ROOT / ".env", override=False)
+
+INDEX_PATH = WEB_DIR / "index.html"
+LOGIN_PATH = WEB_DIR / "login.html"
+REGISTER_PATH = WEB_DIR / "register.html"
+FORGOT_PASSWORD_PATH = WEB_DIR / "forgot_password.html"
+RESET_PASSWORD_PATH = WEB_DIR / "reset_password.html"
+HOME_PATH = WEB_DIR / "home.html"
+ADS_PATH = WEB_DIR / "ads.txt"
 ADS_FALLBACK = os.environ.get(
     "ADS_TXT_CONTENT",
     "google.com, pub-8220581150534873, DIRECT, f08c47fec0942fa0",

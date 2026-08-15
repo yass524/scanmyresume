@@ -1,4 +1,4 @@
-from ats_sections import split_sections, canonicalize_sections
+from scanmyresume.ats.sections import canonicalize_sections, split_sections
 
 text = """
 MOHAMED SHERIF

@@ -22,6 +22,8 @@ def build_pdf_from_report(report: dict, out_path: Path):
 
     title = f"ATS Report • Score: {report.get('score', 0)}/100"
     story.append(Paragraph(title, styles["Title"]))
+    if report.get("rule_based_score") is not None and report.get("rule_based_score") != report.get("score"):
+        story.append(Paragraph(f"Rule-based score: {report.get('rule_based_score')}/100", styles["BodyText"]))
     story.append(Spacer(1, 12))
 
     comps = report.get("components", {})
@@ -58,7 +60,15 @@ def build_pdf_from_report(report: dict, out_path: Path):
     para_list("Missing Keywords", report.get("missing_keywords") or [])
     para_list("AI Matched Terms", report.get("ai_matched_terms") or [])
 
-    sugg = report.get("suggested_bullets") or []
+    ai = report.get("ai_feedback") or {}
+    if ai.get("used"):
+        story.append(Paragraph("AI Feedback", styles["Heading2"]))
+        story.append(Paragraph(str(ai.get("summary") or ""), styles["BodyText"]))
+        story.append(Spacer(1, 6))
+        para_list("AI Strengths", ai.get("strengths") or [])
+        para_list("AI Improvements", ai.get("improvements") or [])
+
+    sugg = (ai.get("rewritten_bullets") if ai.get("used") else None) or report.get("suggested_bullets") or []
     story.append(Paragraph("Suggested Bullets", styles["Heading2"]))
     if sugg:
         for s in sugg:

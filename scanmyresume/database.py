@@ -5,7 +5,7 @@ from passlib.context import CryptContext
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, create_engine, func
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from config import HERE, IS_SERVERLESS
+from scanmyresume.config import HERE, IS_SERVERLESS
 
 if IS_SERVERLESS:
     _default_sqlite = "sqlite:////tmp/users.db"

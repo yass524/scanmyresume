@@ -1,0 +1,1 @@
+"""ScanMyResume application package."""

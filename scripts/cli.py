@@ -1,6 +1,6 @@
 # cli.py
 import argparse, json, os, sys
-from ats_core import compute_score
+from scanmyresume.ats.core import compute_score
 
 def read_text(path: str) -> str:
     if not os.path.exists(path):

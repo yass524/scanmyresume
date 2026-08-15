@@ -5,8 +5,10 @@ def load_app(login_off=True, max_upload_mb="8"):
     if login_off:
         os.environ["LOGIN_ENABLED"] = "0"
     os.environ["MAX_UPLOAD_MB"] = max_upload_mb
-    if "app" in sys.modules:
-        del sys.modules["app"]
+    os.environ["MAX_RPM"] = "120"
+    for name in ("app", "scanmyresume.main", "scanmyresume.auth", "scanmyresume.config"):
+        if name in sys.modules:
+            del sys.modules[name]
     return importlib.import_module("app")
 
 @pytest.mark.skipif(importlib.util.find_spec("reportlab") is None, reason="reportlab not installed")

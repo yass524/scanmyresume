@@ -1,4 +1,4 @@
-# ats_lexicon.py
+# scanmyresume/ats/lexicon.py
 import re
 
 STOPWORDS = {

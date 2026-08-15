@@ -1,4 +1,4 @@
-# ats_sections.py
+# scanmyresume/ats/sections.py
 from __future__ import annotations
 import re
 from typing import Dict, List, Tuple, DefaultDict

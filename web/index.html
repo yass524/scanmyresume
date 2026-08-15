@@ -202,6 +202,22 @@
     placeholder="Paste job description text here (or upload a file)"></textarea>
 </div>
 
+    <div class="md:col-span-2 rounded-xl border border-cyan-900/60 bg-cyan-950/20 p-4">
+      <label class="flex items-start gap-3 cursor-pointer">
+        <input id="useAi" type="checkbox" checked
+               class="mt-1 h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-500" />
+        <span>
+          <span class="block text-sm font-medium text-slate-200">AI-enhanced grading and feedback</span>
+          <span class="mt-1 block text-xs leading-5 text-slate-400">
+            Your remaining resume and job-description content is sent to Groq after email addresses, phone numbers,
+            and URLs are redacted. AI feedback can be inaccurate; verify every suggestion before using it.
+            AI analysis is on by default. Uncheck this option to use rule-based analysis only.
+          </span>
+        </span>
+      </label>
+    </div>
+  </div>
+
     <div class="flex flex-wrap items-center gap-3 mt-6 pt-2 border-t border-slate-800">
       <button id="checkBtn"
         class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-black font-medium active:scale-95 transition">
@@ -240,6 +256,7 @@
 
       <div class="space-y-4">
         <section id="scoreBreakdown" class="rounded-xl border border-slate-800 p-4"></section>
+        <section id="aiFeedback" class="rounded-xl border border-slate-800 p-4"></section>
         <section id="rewriteHelp" class="rounded-xl border border-slate-800 p-4"></section>
         <section id="extraInsights" class="rounded-xl border border-slate-800 p-4"></section>
       </div>
@@ -307,6 +324,15 @@
 
 
 // new functions for results section in ui page 
+function escapeHtml(value){
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function getMatchLabel(score){
   if (score < 50) {
     return {
@@ -332,6 +358,10 @@ function renderHero(json){
   const hero = $("heroSection");
   const score = Number(json.score || 0);
   const match = getMatchLabel(score);
+  const ai = json.ai_feedback || {};
+  const priority = ai.used && ai.improvements?.length
+    ? escapeHtml(ai.improvements[0])
+    : "Quick fixes will appear here next.";
 
   hero.innerHTML = `
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -350,7 +380,7 @@ function renderHero(json){
       <div class="min-w-[260px] rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
         <p class="text-sm font-medium text-slate-200">Top Priority</p>
         <p class="mt-2 text-sm text-slate-400">
-          Quick fixes will appear here next.
+          ${priority}
         </p>
       </div>
     </div>
@@ -499,9 +529,46 @@ function renderScoreBreakdown(json){
   `;
 }
 
+function renderAiFeedback(json){
+  const box = $("aiFeedback");
+  const ai = json.ai_feedback || {};
+
+  if (!ai.requested) {
+    box.innerHTML = `
+      <h3 class="font-medium text-slate-200 mb-3">AI Feedback</h3>
+      <p class="text-sm text-slate-500">Not requested. This report uses rule-based scoring only.</p>
+    `;
+    return;
+  }
+
+  if (!ai.used) {
+    box.innerHTML = `
+      <h3 class="font-medium text-slate-200 mb-3">AI Feedback</h3>
+      <p class="text-sm text-amber-200">${escapeHtml(ai.message || "AI feedback is unavailable; the rule-based score is shown.")}</p>
+    `;
+    return;
+  }
+
+  const strengths = (ai.strengths || []).map(item => `<li>• ${escapeHtml(item)}</li>`).join("");
+  const improvements = (ai.improvements || []).map(item => `<li>• ${escapeHtml(item)}</li>`).join("");
+  box.innerHTML = `
+    <div class="flex items-start justify-between gap-3 mb-3">
+      <h3 class="font-medium text-slate-200">AI Feedback</h3>
+      <span class="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-200">
+        Quality ${Number(ai.ai_quality_score || 0).toFixed(1)} · ${Number(ai.score_adjustment || 0) >= 0 ? "+" : ""}${Number(ai.score_adjustment || 0).toFixed(1)}
+      </span>
+    </div>
+    <p class="text-sm leading-6 text-slate-300">${escapeHtml(ai.summary)}</p>
+    ${strengths ? `<p class="mt-4 text-xs uppercase tracking-[0.18em] text-slate-500">Strengths</p><ul class="mt-2 space-y-2 text-sm text-emerald-200">${strengths}</ul>` : ""}
+    ${improvements ? `<p class="mt-4 text-xs uppercase tracking-[0.18em] text-slate-500">Improvements</p><ul class="mt-2 space-y-2 text-sm text-amber-100">${improvements}</ul>` : ""}
+    <p class="mt-4 text-xs text-slate-500">${escapeHtml(ai.disclaimer)}</p>
+  `;
+}
+
 function renderRewriteHelp(json){
   const box = $("rewriteHelp");
-  const bullets = json.suggested_bullets || [];
+  const aiBullets = json.ai_feedback?.used ? (json.ai_feedback.rewritten_bullets || []) : [];
+  const bullets = aiBullets.length ? aiBullets : (json.suggested_bullets || []);
 
   box.innerHTML = `
     <h3 class="font-medium text-slate-200 mb-4">Rewrite Help</h3>
@@ -601,6 +668,7 @@ function scrollToResults(){
       renderKeywordGaps(json);
       renderStructureCheck(json);
       renderScoreBreakdown(json);
+      renderAiFeedback(json);
       renderRewriteHelp(json);
       renderExtraInsights(json);
 
@@ -648,6 +716,7 @@ function scrollToResults(){
       const jdFile     = $("jdFile").files[0];
       const resume_text = $("resume").value.trim();
       const job_description = $("jd").value.trim();
+      const use_ai = $("useAi").checked;
 
       if(!resumeFile && !jdFile && !resume_text && !job_description){
         $("status").textContent = "Add a resume and JD (upload or paste).";
@@ -666,11 +735,12 @@ function scrollToResults(){
           if (resumeFile) form.append("resume", resumeFile);
           if (jdFile)     form.append("job_description", jdFile);
           if (!jdFile && job_description) form.append("jd_text", job_description);
+          form.append("use_ai", String(use_ai));
           res = await fetch("/score-file", { method:"POST", body: form });
         } else {
           res = await fetch("/score", {
             method:"POST", headers:{ "Content-Type":"application/json" },
-            body: JSON.stringify({ resume_text, job_description })
+            body: JSON.stringify({ resume_text, job_description, use_ai })
           });
         }
         json = await res.json();

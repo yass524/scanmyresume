@@ -1,4 +1,4 @@
-# ats_core.py
+# scanmyresume/ats/core.py
 
 from __future__ import annotations
 import os, re
@@ -6,17 +6,17 @@ from collections import Counter, defaultdict
 from typing import Dict, List, Tuple, Set, Iterable
 
 # Compiled skill maps / alias regexes
-from ats_skills import ALIAS_RE as _ALIAS_RE
-from ats_skills import CANON_CATEGORY as _CANON_CATEGORY
-from ats_skills import CANON_ALIASES as _CANON_ALIASES
+from scanmyresume.ats.skills import ALIAS_RE as _ALIAS_RE
+from scanmyresume.ats.skills import CANON_CATEGORY as _CANON_CATEGORY
+from scanmyresume.ats.skills import CANON_ALIASES as _CANON_ALIASES
 
 # Robust section splitter + helpers
-from ats_sections import split_sections as _split_sections
-from ats_sections import SECTION_WEIGHTS
-from ats_sections import is_header_line as _is_header_line
+from scanmyresume.ats.sections import split_sections as _split_sections
+from scanmyresume.ats.sections import SECTION_WEIGHTS
+from scanmyresume.ats.sections import is_header_line as _is_header_line
 
 # Lexicon (verbs, stopwords, common regexes, markers)
-from ats_lexicon import (
+from scanmyresume.ats.lexicon import (
     ACTION_VERBS,
     STOPWORDS,
     RE_DIGIT,

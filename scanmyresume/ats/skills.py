@@ -1,4 +1,4 @@
-# ats_skills.py
+# scanmyresume/ats/skills.py
 from __future__ import annotations
 import re
 from typing import Dict, Set, Tuple

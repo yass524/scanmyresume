@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import HTTPException
 
-from config import MAX_BYTES, MAX_UPLOAD_MB
+from scanmyresume.config import MAX_BYTES, MAX_UPLOAD_MB
 
 try:
     import fitz

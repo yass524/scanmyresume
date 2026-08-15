@@ -1,4 +1,4 @@
-from ats_sections import split_sections
+from scanmyresume.ats.sections import split_sections
 
 sample_resume = """Summary
 Machine Learning Engineer with 4+ years experience in AI and Computer Vision.
@@ -19,12 +19,10 @@ Skills
 Python, PyTorch, TensorRT, Docker, AWS
 """
 
-present, blocks = split_sections(sample_resume)
-
-print("=== Sections Present ===")
-for k, v in present.items():
-    print(f"{k}: {v}")
-
-print("\n=== Section Texts ===")
-for k, v in blocks.items():
-    print(f"\n--- {k.upper()} ---\n{v}")
+def test_standard_resume_sections_are_detected():
+    present, blocks = split_sections(sample_resume)
+    assert present["experience"] is True
+    assert present["projects"] is True
+    assert present["education"] is True
+    assert present["skills"] is True
+    assert "TensorRT" in blocks["experience"]

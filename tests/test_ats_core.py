@@ -10,9 +10,10 @@ def load_core(emb_on: bool = False) -> types.ModuleType:
     # Optional: lower the threshold a touch for CI-flakiness
     if emb_on:
         os.environ.setdefault("EMB_THRESH", "0.60")
-    if "ats_core" in sys.modules:
-        del sys.modules["ats_core"]
-    return importlib.import_module("ats_core")
+    module_name = "scanmyresume.ats.core"
+    if module_name in sys.modules:
+        del sys.modules[module_name]
+    return importlib.import_module(module_name)
 
 
 # ---------- Fixtures with representative texts ----------
@@ -159,8 +160,8 @@ def test_length_penalty_on_too_short_resume():
 
 
 @pytest.mark.skipif(
-    importlib.util.find_spec("sentence_transformers") is None,
-    reason="sentence-transformers not installed"
+    os.environ.get("RUN_EMBEDDING_TESTS") != "1",
+    reason="set RUN_EMBEDDING_TESTS=1 with a downloaded SentenceTransformer model",
 )
 def test_semantic_credit_for_close_phrase(resume_controls_semantic, jd_controls):
     # Enable embeddings for this test
